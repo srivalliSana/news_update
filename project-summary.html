@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUTM Campus News — Project Documentation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0b2c6e;
+      --gold:  #e8920a;
+      --green: #16a34a;
+      --red:   #dc2626;
+      --bg:    #f4f6fb;
+      --card:  #ffffff;
+      --border:#dde3ee;
+      --text:  #1a1a2e;
+      --muted: #5a6480;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* ── Cover Page ── */
+    .cover {
+      background: linear-gradient(135deg, #071e4d 0%, #0b2c6e 60%, #1a3c8e 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 40px;
+      page-break-after: always;
+    }
+    .cover-emblem {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), #f5b200);
+      color: #fff; font-size: 36px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 28px;
+      box-shadow: 0 8px 32px rgba(232,146,10,.4);
+    }
+    .cover h1 { font-size: 38px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+    .cover h1 span { color: var(--gold); }
+    .cover .subtitle { font-size: 16px; color: rgba(255,255,255,.7); margin-bottom: 40px; }
+    .cover-meta {
+      display: flex; gap: 32px; justify-content: center;
+      flex-wrap: wrap; margin-top: 16px;
+    }
+    .cover-meta-item { text-align: center; }
+    .cover-meta-item .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.5); margin-bottom: 4px; }
+    .cover-meta-item .value { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); }
+    .cover-divider { width: 60px; height: 3px; background: var(--gold); margin: 28px auto; border-radius: 2px; }
+    .cover-tags { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .cover-tag {
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.85); padding: 5px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+    }
+
+    /* ── Page Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 48px 40px; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 48px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px; padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-number {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--navy); color: #fff;
+      font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-title { font-size: 20px; font-weight: 800; color: var(--navy); }
+    .section-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 20px 24px; margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card-title {
+      font-size: 13px; font-weight: 700; color: var(--navy);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .card-title .icon { font-size: 16px; }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* ── File List ── */
+    .file-list { list-style: none; }
+    .file-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .file-icon.html { background: #fff3e0; }
+    .file-icon.js   { background: #fff9c4; }
+    .file-icon.css  { background: #e8f5e9; }
+    .file-icon.json { background: #e3f2fd; }
+    .file-icon.node { background: #f3e5f5; }
+    .file-name  { font-size: 13px; font-weight: 700; font-family: 'Fira Code', monospace; color: var(--navy); }
+    .file-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Code blocks ── */
+    pre, code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+    }
+    pre {
+      background: #1a2340;
+      color: #a0d0ff;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    pre .comment { color: #6a8aad; font-style: italic; }
+    pre .cmd     { color: #7ec8e3; }
+    pre .str     { color: #a8d8a8; }
+    pre .kw      { color: #e8a87c; }
+    code {
+      background: #e3ecf9; color: #071e4d;
+      padding: 1px 6px; border-radius: 4px; font-size: 12px;
+    }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+    thead th {
+      background: var(--navy); color: #fff;
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+    }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: #f8faff; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    }
+    .b-green  { background: #dcfce7; color: var(--green); }
+    .b-navy   { background: #e3f0ff; color: var(--navy); }
+    .b-gold   { background: #fff3e0; color: #92600a; }
+    .b-red    { background: #fee2e2; color: var(--red); }
+    .b-purple { background: #ede9fe; color: #6d28d9; }
+
+    /* ── Step list ── */
+    .steps { list-style: none; counter-reset: step; }
+    .steps li {
+      counter-increment: step;
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(step);
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--navy); color: #fff;
+      font-size: 12px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-body strong { display: block; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .step-body span   { font-size: 12px; color: var(--muted); }
+
+    /* ── Feature row ── */
+    .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .feature-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 4px solid var(--navy); border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+    }
+    .feature-item.gold { border-left-color: var(--gold); }
+    .feature-item.green { border-left-color: var(--green); }
+    .feature-item.purple { border-left-color: #7c3aed; }
+    .feature-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .feature-desc  { font-size: 12px; color: var(--muted); }
+
+    /* ── Info box ── */
+    .info-box {
+      display: flex; gap: 12px; padding: 14px 16px;
+      border-radius: 8px; margin: 12px 0;
+    }
+    .info-box.info   { background: #e3f0ff; border: 1px solid #bcd6f5; }
+    .info-box.warn   { background: #fff8e1; border: 1px solid #ffe082; }
+    .info-box.danger { background: #fee2e2; border: 1px solid #fca5a5; }
+    .info-box.ok     { background: #dcfce7; border: 1px solid #86efac; }
+    .info-box .icon  { font-size: 18px; flex-shrink: 0; }
+    .info-box p      { font-size: 13px; line-height: 1.6; }
+    .info-box strong { font-weight: 700; }
+
+    /* ── Slack command ── */
+    .slack-cmd {
+      background: #1a2340; color: #a0d0ff;
+      padding: 10px 16px; border-radius: 7px;
+      font-family: 'Fira Code', monospace; font-size: 12.5px;
+      margin: 6px 0; line-height: 1.6;
+    }
+    .slack-cmd .slash { color: #e8a87c; font-weight: 700; }
+    .slack-cmd .section { color: #a8d8a8; }
+    .slack-cmd .sep { color: #6a8aad; }
+
+    /* ── Admin tab description ── */
+    .admin-tabs { display: flex; flex-direction: column; gap: 10px; }
+    .admin-tab {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .admin-tab-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--navy); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
+    }
+    .admin-tab-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .admin-tab-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; font-size: 12px; }
+      .cover { min-height: auto; padding: 60px 40px 80px; }
+      .page { padding: 32px 36px; }
+      pre { font-size: 11px; }
+      .no-break { page-break-inside: avoid; }
+    }
+
+    /* ── Page break helpers ── */
+    .page-break { page-break-before: always; }
+    .avoid-break { page-break-inside: avoid; }
+
+    /* ── TOC ── */
+    .toc { list-style: none; }
+    .toc li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px dotted var(--border);
+      font-size: 13px;
+    }
+    .toc li:last-child { border-bottom: none; }
+    .toc-num { color: var(--gold); font-weight: 700; margin-right: 12px; }
+    .toc-title { flex: 1; font-weight: 600; }
+    .toc-page { color: var(--muted); font-size: 12px; }
+
+    /* Print button */
+    .print-btn {
+      position: fixed; bottom: 32px; right: 32px; z-index: 999;
+      background: var(--navy); color: #fff;
+      padding: 14px 24px; border-radius: 50px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(11,44,110,.4);
+      border: none; font-family: inherit;
+      display: flex; align-items: center; gap: 8px;
+      transition: background .2s;
+    }
+    .print-btn:hover { background: var(--gold); }
+    @media print { .print-btn { display: none; } }
+  </style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+
+<!-- ══════════════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-emblem">CU</div>
+  <h1>CUTM <span>Campus News</span></h1>
+  <p class="subtitle">Project Documentation — Full Build Summary</p>
+  <div class="cover-divider"></div>
+
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">University</div>
+      <div class="value">Centurion University of Technology and Management</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Built With</div>
+      <div class="value">HTML · CSS · JavaScript · Node.js · Express</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Date</div>
+      <div class="value">June 2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">GitHub</div>
+      <div class="value">github.com/srivalliSana/news_update</div>
+    </div>
+  </div>
+
+  <div class="cover-tags">
+    <span class="cover-tag">News Portal</span>
+    <span class="cover-tag">Slack Integration</span>
+    <span class="cover-tag">Admin Panel</span>
+    <span class="cover-tag">REST API</span>
+    <span class="cover-tag">Dark Mode</span>
+    <span class="cover-tag">Responsive</span>
+    <span class="cover-tag">Archive System</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════ -->
+<div class="page">
+
+  <!-- ── Table of Contents ── -->
+  <div class="section avoid-break">
+    <div class="section-header">
+      <div class="section-number">📋</div>
+      <div>
+        <div class="section-title">Table of Contents</div>
+      </div>
+    </div>
+    <div class="card">
+      <ul class="toc">
+        <li><span class="toc-num">01</span><span class="toc-title">Project Overview</span><span class="toc-page">What was built</span></li>
+        <li><span class="toc-num">02</span><span class="toc-title">File Structure</span><span class="toc-page">All project files</span></li>
+        <li><span class="toc-num">03</span><span class="toc-title">Website Features</span><span class="toc-page">Frontend capabilities</span></li>
+        <li><span class="toc-num">04</span><span class="toc-title">News Sections</span><span class="toc-page">8 college-specific categories</span></li>
+        <li><span class="toc-num">05</span><span class="toc-title">Backend Server</span><span class="toc-page">Node.js / Express API</span></li>
+        <li><span class="toc-num">06</span><span class="toc-title">Admin Portal</span><span class="toc-page">Full content management</span></li>
+        <li><span class="toc-num">07</span><span class="toc-title">Slack Integration</span><span class="toc-page">Publish news from Slack</span></li>
+        <li><span class="toc-num">08</span><span class="toc-title">API Endpoints</span><span class="toc-page">All REST routes</span></li>
+        <li><span class="toc-num">09</span><span class="toc-title">Database / Storage</span><span class="toc-page">JSON file storage</span></li>
+        <li><span class="toc-num">10</span><span class="toc-title">GitHub & Deployment</span><span class="toc-page">Push and run commands</span></li>
+        <li><span class="toc-num">11</span><span class="toc-title">How to Use</span><span class="toc-page">Step-by-step guide</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       01 — Project Overview
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">01</div>
+      <div>
+        <div class="section-title">Project Overview</div>
+        <div class="section-desc">What was built and why</div>
+      </div>
+    </div>
+
+    <div class="info-box ok">
+      <span class="icon">🎯</span>
+      <p>A fully functional <strong>college news portal</strong> for Centurion University of Technology and Management (CUTM) — similar to Times of India / NDTV in layout and behaviour, but customised for a university audience. News articles appear in descending time order (newest first) and older ones move down into an archive.</p>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card avoid-break">
+        <div class="card-title"><span class="icon">🌐</span> Frontend</div>
+        <ul style="list-style:none;font-size:13px;line-height:2">
+          <li>✅ News portal homepage (<code>index.html</code>)</li>
+          <li>✅ Archive page (<code>archive.html</code>)</li>
+          <li>✅ Breaking news ticker</li>
+          <li>✅ Featured hero article</li>
+          <li>✅ Category filter navigation</li>
+          <li>✅ Search overlay</li>
+          <li>✅ Article full-read modal</li>
+          <li>✅ Dark mode (persists)</li>
+          <li>✅ Fully responsive (mobile)</li>
+        </ul>
+      </div>
+      <div class="card avoid-break">
+        <div class="card-title"><span class="icon">⚙️</span> Backend</div>
+        <ul style="list-style:none;font-size:13px;line-height:2">
+          <li>✅ Node.js + Express server</li>
+          <li>✅ REST API for articles</li>
+          <li>✅ Admin portal (<code>admin.html</code>)</li>
+          <li>✅ Slack slash command integration</li>
+          <li>✅ JSON file storage (no database)</li>
+          <li>✅ Auto-seed 18 default articles</li>
+          <li>✅ Ticker management via API</li>
+          <li>✅ Quick links management via API</li>
+          <li>✅ Token-based admin auth</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       02 — File Structure
+  ══════════════════════════════════════════════ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-number">02</div>
+      <div>
+        <div class="section-title">File Structure</div>
+        <div class="section-desc">Every file in the project and its purpose</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <ul class="file-list">
+        <li class="file-item">
+          <div class="file-icon node">🟢</div>
+          <div><div class="file-name">server.js</div><div class="file-desc">Main Node.js/Express backend — serves the website, handles all API routes, Slack commands, admin auth, and auto-seeds articles on first run.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon html">🔵</div>
+          <div><div class="file-name">index.html</div><div class="file-desc">Homepage — breaking ticker, hero article, news card feed, sidebar with recent updates, quick links, section counts.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon html">🔵</div>
+          <div><div class="file-name">admin.html</div><div class="file-desc">Admin portal — 5-tab interface: Articles (full CRUD), Announcements (ticker), Quick Links, Slack config, Settings (password).</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon html">🔵</div>
+          <div><div class="file-name">archive.html</div><div class="file-desc">Archive page — all articles grouped by date, filterable by section and month, searchable.</div></div>
+        </li>
+        <li class="file-icon js">
+        </li>
+        <li class="file-item">
+          <div class="file-icon js">🟡</div>
+          <div><div class="file-name">app.js</div><div class="file-desc">Frontend JavaScript for homepage — fetches articles, ticker, quick links from API; handles filters, modals, search, dark mode.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon js">🟡</div>
+          <div><div class="file-name">archive.js</div><div class="file-desc">Frontend JavaScript for archive page — groups articles by date, applies filters, renders archive items and modals.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon js">🟡</div>
+          <div><div class="file-name">data.js</div><div class="file-desc">Static fallback (currently empty — all data lives in articles.json managed by server).</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon css">🟢</div>
+          <div><div class="file-name">style.css</div><div class="file-desc">Complete stylesheet — CUTM navy + amber brand colours, badge system for 8 sections, dark mode, responsive breakpoints, animations.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon json">🔷</div>
+          <div><div class="file-name">articles.json</div><div class="file-desc">Article database — all articles stored as JSON. Pre-seeded with 18 dummy CUTM articles. Managed via admin portal and Slack commands.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon json">🔷</div>
+          <div><div class="file-name">site-settings.json</div><div class="file-desc">Stores the scrolling ticker announcements and sidebar quick links. Edited via Admin → Announcements and Admin → Quick Links.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon json">🔷</div>
+          <div><div class="file-name">config.json</div><div class="file-desc">Stores admin password and Slack signing secret. ⚠️ Excluded from GitHub (.gitignore) — lives only on your machine.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon json">🔷</div>
+          <div><div class="file-name">package.json</div><div class="file-desc">Node.js project config — dependencies: express, dotenv. Dev dependency: nodemon.</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon node">🟢</div>
+          <div><div class="file-name">.gitignore</div><div class="file-desc">Tells git what NOT to upload: node_modules/, .env, config.json (passwords/secrets).</div></div>
+        </li>
+        <li class="file-item">
+          <div class="file-icon node">🟢</div>
+          <div><div class="file-name">.env.example</div><div class="file-desc">Template for environment variables (PORT). Copy to .env and fill in values.</div></div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       03 — Website Features
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">03</div>
+      <div>
+        <div class="section-title">Website Features</div>
+        <div class="section-desc">What visitors see and can do</div>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-title">📢 Breaking News Ticker</div>
+        <div class="feature-desc">Scrolling announcement bar at the top. Items are fully editable from the admin panel → Announcements tab. Pauses on hover.</div>
+      </div>
+      <div class="feature-item gold">
+        <div class="feature-title">🖼️ Featured Hero Article</div>
+        <div class="feature-desc">Full-width image hero at the top of the feed. Any article can be set as featured from admin. Zooms on hover.</div>
+      </div>
+      <div class="feature-item green">
+        <div class="feature-title">⏱️ Newest First Order</div>
+        <div class="feature-desc">Articles always appear newest at top, oldest at bottom. Toggle between Newest/Oldest First with sort buttons.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">🗂️ Section Filter Nav</div>
+        <div class="feature-desc">Sticky navigation bar with 8 college sections. Click any section to filter the feed instantly.</div>
+      </div>
+      <div class="feature-item purple">
+        <div class="feature-title">🔍 Search Overlay</div>
+        <div class="feature-desc">Press the Search link or / key. Searches across title, summary, section, and tags in real-time.</div>
+      </div>
+      <div class="feature-item gold">
+        <div class="feature-title">📖 Full Article Modal</div>
+        <div class="feature-desc">Click any card to open the full article in a pop-up modal with title, author, date, image, full content, and tags.</div>
+      </div>
+      <div class="feature-item green">
+        <div class="feature-title">📦 Archive Page</div>
+        <div class="feature-desc">All articles grouped by date. Filter by section, month, or search. Archived articles show an "Archived" badge.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-title">🌙 Dark Mode</div>
+        <div class="feature-desc">Toggle with the Dark Mode link in the top bar. Preference saved in localStorage — persists on next visit.</div>
+      </div>
+      <div class="feature-item purple">
+        <div class="feature-title">📱 Fully Responsive</div>
+        <div class="feature-desc">Hamburger menu on mobile. Single-column card layout on small screens. Archive items stack vertically.</div>
+      </div>
+      <div class="feature-item green">
+        <div class="feature-title">🔗 Dynamic Quick Links</div>
+        <div class="feature-desc">Sidebar quick links are managed from the admin panel → Quick Links tab. Changes appear on the website instantly.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       04 — News Sections
+  ══════════════════════════════════════════════ -->
+  <div class="section avoid-break">
+    <div class="section-header">
+      <div class="section-number">04</div>
+      <div>
+        <div class="section-title">News Sections</div>
+        <div class="section-desc">8 college-specific categories replacing generic news categories</div>
+      </div>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Section</th><th>Colour Badge</th><th>Example Content</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Campus</strong></td><td><span class="badge b-navy">Campus</span></td><td>Convocation, new infrastructure, hostel inauguration</td></tr>
+          <tr><td><strong>Academics</strong></td><td><span class="badge b-green">Academics</span></td><td>New programmes, MoUs, exam schedules, academic calendar</td></tr>
+          <tr><td><strong>Events</strong></td><td><span class="badge b-gold">Events</span></td><td>Fests, guest lectures, workshops, seminars</td></tr>
+          <tr><td><strong>Sports</strong></td><td><span class="badge" style="background:#e0f7ef;color:#0a6645">Sports</span></td><td>Inter-university tournaments, sports meets, achievements</td></tr>
+          <tr><td><strong>Placements</strong></td><td><span class="badge" style="background:#fce8ff;color:#6b0f8a">Placements</span></td><td>Campus drives, offer letters, placement statistics</td></tr>
+          <tr><td><strong>Research</strong></td><td><span class="badge" style="background:#e8f0ff;color:#1a3a8a">Research</span></td><td>Publications, patents, CoE launches, innovations</td></tr>
+          <tr><td><strong>Achievements</strong></td><td><span class="badge" style="background:#fff3e0;color:#c25d00">Achievements</span></td><td>Rankings, awards, student accomplishments, records</td></tr>
+          <tr><td><strong>Alumni</strong></td><td><span class="badge" style="background:#f0e8ff;color:#4a0f8a">Alumni</span></td><td>Alumni news, milestones, success stories</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       05 — Backend Server
+  ══════════════════════════════════════════════ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-number">05</div>
+      <div>
+        <div class="section-title">Backend Server</div>
+        <div class="section-desc">server.js — Node.js + Express</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card avoid-break">
+        <div class="card-title">📦 Dependencies</div>
+        <table>
+          <thead><tr><th>Package</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>express</code></td><td>Web server framework</td></tr>
+            <tr><td><code>dotenv</code></td><td>Environment variables</td></tr>
+            <tr><td><code>crypto</code></td><td>Slack signature verification (built-in)</td></tr>
+            <tr><td><code>fs</code></td><td>File read/write for JSON storage (built-in)</td></tr>
+            <tr><td><code>nodemon</code></td><td>Auto-restart on file change (dev)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card avoid-break">
+        <div class="card-title">🗄️ Storage Files</div>
+        <table>
+          <thead><tr><th>File</th><th>Stores</th></tr></thead>
+          <tbody>
+            <tr><td><code>articles.json</code></td><td>All news articles</td></tr>
+            <tr><td><code>site-settings.json</code></td><td>Ticker + Quick Links</td></tr>
+            <tr><td><code>config.json</code></td><td>Admin password + Slack secret</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:4px">
+      <div class="card-title">▶️ How to Run</div>
+      <pre><span class="comment"># Install dependencies (first time only)</span>
+<span class="cmd">npm install</span>
+
+<span class="comment"># Start the server</span>
+<span class="cmd">npm start</span>
+
+<span class="comment"># Development mode (auto-restarts on file change)</span>
+<span class="cmd">npx nodemon server.js</span></pre>
+      <div class="info-box info" style="margin-top:8px">
+        <span class="icon">ℹ️</span>
+        <p>On first <code>npm start</code>, the server automatically seeds <code>articles.json</code> with 18 default CUTM articles if the file is empty. The website is available at <strong>http://localhost:3000</strong> and the admin portal at <strong>http://localhost:3000/admin.html</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       06 — Admin Portal
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">06</div>
+      <div>
+        <div class="section-title">Admin Portal</div>
+        <div class="section-desc">admin.html — Full content management system</div>
+      </div>
+    </div>
+
+    <div class="info-box info">
+      <span class="icon">🔐</span>
+      <p><strong>URL:</strong> http://localhost:3000/admin.html &nbsp;|&nbsp; <strong>Default password:</strong> <code>cutm@admin</code> &nbsp;|&nbsp; Change password from Settings tab after first login.</p>
+    </div>
+
+    <div class="admin-tabs" style="margin-top:14px">
+      <div class="admin-tab avoid-break">
+        <div class="admin-tab-icon">📰</div>
+        <div>
+          <div class="admin-tab-title">Articles — Full CRUD</div>
+          <div class="admin-tab-desc">View all articles with stats (Total / Live / Archived / Featured). Search and filter by section or status. Add new articles with a full form (title, section, author, summary, full HTML content, image URL with preview, tags). Edit any existing article by clicking the ✏️ pencil icon — all fields are pre-filled. Toggle ⭐ Featured (only one at a time), 📢 Notice badge, Archive/Restore, and Delete with confirmation.</div>
+        </div>
+      </div>
+      <div class="admin-tab avoid-break">
+        <div class="admin-tab-icon">📢</div>
+        <div>
+          <div class="admin-tab-title">Announcements — Ticker Management</div>
+          <div class="admin-tab-desc">Edit the scrolling ticker that runs across the top of the website. Add new announcement items, edit existing text inline, remove items with ✕, and drag-to-reorder. Click "Save All Announcements" and changes appear on the live website immediately.</div>
+        </div>
+      </div>
+      <div class="admin-tab avoid-break">
+        <div class="admin-tab-icon">🔗</div>
+        <div>
+          <div class="admin-tab-title">Quick Links — Sidebar Links</div>
+          <div class="admin-tab-desc">Manage the Quick Links widget in the website sidebar. Each link has a Label, a URL, and an External toggle (opens in new tab). Add, remove, edit, and drag-to-reorder links. Save to update the live website instantly.</div>
+        </div>
+      </div>
+      <div class="admin-tab avoid-break">
+        <div class="admin-tab-icon">💬</div>
+        <div>
+          <div class="admin-tab-title">Slack — Signing Secret Configuration</div>
+          <div class="admin-tab-desc">Paste your Slack App Signing Secret here (from Slack App → Basic Information → App Credentials). Status pill shows Configured (green) or Not Configured (red). The server reads the secret from config.json on every request — no restart needed after saving. Also shows all 4 slash command URLs ready to copy into Slack and a full setup guide.</div>
+        </div>
+      </div>
+      <div class="admin-tab avoid-break">
+        <div class="admin-tab-icon">⚙️</div>
+        <div>
+          <div class="admin-tab-title">Settings — Admin Password</div>
+          <div class="admin-tab-desc">Change the admin portal password. Minimum 6 characters. Must be confirmed. Takes effect immediately — use the new password on next login.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       07 — Slack Integration
+  ══════════════════════════════════════════════ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-number">07</div>
+      <div>
+        <div class="section-title">Slack Integration</div>
+        <div class="section-desc">Publish news articles directly from a Slack channel</div>
+      </div>
+    </div>
+
+    <div class="card avoid-break">
+      <div class="card-title">⚡ How it works</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;padding:8px 0">
+        <span style="background:#e3f0ff;padding:6px 14px;border-radius:6px;font-weight:600">Slack Channel</span>
+        <span style="color:var(--muted)">→ /publish command →</span>
+        <span style="background:#e3f0ff;padding:6px 14px;border-radius:6px;font-weight:600">Node.js Server</span>
+        <span style="color:var(--muted)">→ saves to →</span>
+        <span style="background:#e3f0ff;padding:6px 14px;border-radius:6px;font-weight:600">articles.json</span>
+        <span style="color:var(--muted)">→ fetched by →</span>
+        <span style="background:#e3f0ff;padding:6px 14px;border-radius:6px;font-weight:600">Website</span>
+      </div>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">📋 Slash Commands</div>
+      <table>
+        <thead><tr><th>Command</th><th>Endpoint</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>/publish</code></td><td><code>POST /slack/publish</code></td><td>Create and publish a new article on the website</td></tr>
+          <tr><td><code>/list-news</code></td><td><code>POST /slack/list</code></td><td>Show the 10 most recent articles with IDs (private reply)</td></tr>
+          <tr><td><code>/archive-news</code></td><td><code>POST /slack/archive</code></td><td>Move an article to archive by ID (removes from main feed)</td></tr>
+          <tr><td><code>/delete-news</code></td><td><code>POST /slack/delete</code></td><td>Permanently delete an article by ID</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">💬 Command Examples (type in Slack)</div>
+      <div class="slack-cmd"><span class="slash">/publish</span> <span class="section">Campus</span> <span class="sep">|</span> New Library Wing Opens <span class="sep">|</span> The 3-floor library was inaugurated by the Vice-Chancellor today. <span class="sep">|</span> Editorial Desk</div>
+      <div class="slack-cmd"><span class="slash">/publish</span> <span class="section">Placements</span> <span class="sep">|</span> TCS Selects 30 Students <span class="sep">|</span> Campus drive concludes with 30 offers at ₹3.6 LPA. <span class="sep">|</span> Placement Cell <span class="sep">|</span> https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800</div>
+      <div class="slack-cmd"><span class="slash">/list-news</span></div>
+      <div class="slack-cmd"><span class="slash">/archive-news</span> 105</div>
+      <div class="slack-cmd"><span class="slash">/delete-news</span> 108</div>
+      <p class="hint" style="margin-top:8px">Format: <code>/publish Section | Title | Summary | Author | ImageURL (optional)</code></p>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">🛠️ Slack App Setup Steps</div>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Start your server</strong><span>Run <code>npm start</code> on your computer</span></div></li>
+        <li><div class="step-body"><strong>Expose publicly with ngrok</strong><span>Install ngrok (free) → run <code>ngrok http 3000</code> → copy the <code>https://xxxx.ngrok.io</code> URL</span></div></li>
+        <li><div class="step-body"><strong>Create Slack App</strong><span>Go to api.slack.com/apps → Create New App → From scratch → name it "CUTM News Bot"</span></div></li>
+        <li><div class="step-body"><strong>Add Slash Commands</strong><span>App Settings → Slash Commands → Create 4 commands: /publish, /list-news, /archive-news, /delete-news with the ngrok URLs</span></div></li>
+        <li><div class="step-body"><strong>Copy Signing Secret</strong><span>App Settings → Basic Information → App Credentials → Signing Secret → paste into Admin Portal → Slack tab</span></div></li>
+        <li><div class="step-body"><strong>Install App</strong><span>Settings → Install App → Install to Workspace → Allow</span></div></li>
+        <li><div class="step-body"><strong>Test it</strong><span>Go to any Slack channel and type <code>/publish Campus | Test Article | This is a test. | Editorial Desk</code></span></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       08 — API Endpoints
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">08</div>
+      <div>
+        <div class="section-title">API Endpoints</div>
+        <div class="section-desc">All REST routes in server.js</div>
+      </div>
+    </div>
+
+    <div class="card avoid-break">
+      <div class="card-title">🌐 Public API (no auth required)</div>
+      <table>
+        <thead><tr><th>Method</th><th>Route</th><th>Returns</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/api/articles</code></td><td>All articles from articles.json</td></tr>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/api/ticker</code></td><td>Ticker announcements array from site-settings.json</td></tr>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/api/quicklinks</code></td><td>Quick links array from site-settings.json</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">🔐 Admin API (requires Bearer token)</div>
+      <table>
+        <thead><tr><th>Method</th><th>Route</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/admin/login</code></td><td>Login with password → returns token</td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/admin/logout</code></td><td>Invalidate current token</td></tr>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/admin/config</code></td><td>Check if Slack is configured</td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/admin/config</code></td><td>Save Slack secret or change admin password</td></tr>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/admin/settings</code></td><td>Get ticker + quick links</td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/admin/settings</code></td><td>Save ticker and/or quick links</td></tr>
+          <tr><td><span class="badge b-green">GET</span></td><td><code>/admin/articles</code></td><td>Get all articles + stats</td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/admin/articles</code></td><td>Create new article</td></tr>
+          <tr><td><span class="badge b-navy">PUT</span></td><td><code>/admin/articles/:id</code></td><td>Full update of an article (edit)</td></tr>
+          <tr><td><span class="badge b-purple">PATCH</span></td><td><code>/admin/articles/:id</code></td><td>Quick toggle: archived / featured / breaking</td></tr>
+          <tr><td><span class="badge b-red">DELETE</span></td><td><code>/admin/articles/:id</code></td><td>Permanently delete an article</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">💬 Slack Endpoints (verified by signing secret)</div>
+      <table>
+        <thead><tr><th>Method</th><th>Route</th><th>Slack Command</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/slack/publish</code></td><td><code>/publish</code></td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/slack/list</code></td><td><code>/list-news</code></td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/slack/archive</code></td><td><code>/archive-news</code></td></tr>
+          <tr><td><span class="badge b-gold">POST</span></td><td><code>/slack/delete</code></td><td><code>/delete-news</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       09 — Storage
+  ══════════════════════════════════════════════ -->
+  <div class="section avoid-break">
+    <div class="section-header">
+      <div class="section-number">09</div>
+      <div>
+        <div class="section-title">Database / Storage</div>
+        <div class="section-desc">How data is stored (no database needed)</div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card avoid-break">
+        <div class="card-title">📄 articles.json</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7">Array of article objects. Each has: <code>id</code>, <code>title</code>, <code>summary</code>, <code>content</code> (HTML), <code>category</code>, <code>author</code>, <code>image</code>, <code>timestamp</code> (ISO), <code>featured</code>, <code>breaking</code>, <code>archived</code>, <code>tags[]</code>.<br><br>Auto-seeded with 18 articles on first run.</p>
+      </div>
+      <div class="card avoid-break">
+        <div class="card-title">⚙️ site-settings.json</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7">Two keys:<br><code>ticker</code> — array of strings shown in the scrolling bar.<br><br><code>quickLinks</code> — array of <code>{label, url, external}</code> objects shown in the sidebar widget.<br><br>Edited via admin panel.</p>
+      </div>
+      <div class="card avoid-break">
+        <div class="card-title">🔑 config.json</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7">Two keys:<br><code>adminPassword</code> — default: <code>cutm@admin</code><br><br><code>slackSigningSecret</code> — your Slack app's signing secret. Set from Admin → Slack tab.<br><br>⚠️ In .gitignore — never pushed to GitHub.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       10 — GitHub & Deployment
+  ══════════════════════════════════════════════ -->
+  <div class="section page-break">
+    <div class="section-header">
+      <div class="section-number">10</div>
+      <div>
+        <div class="section-title">GitHub & Deployment</div>
+        <div class="section-desc">All git commands used to push the project</div>
+      </div>
+    </div>
+
+    <div class="card avoid-break">
+      <div class="card-title">📤 Initial Push (already done)</div>
+      <pre><span class="comment"># 1. Initialize git repo</span>
+<span class="cmd">git init</span>
+
+<span class="comment"># 2. Stage all files (.gitignore keeps secrets out)</span>
+<span class="cmd">git add .</span>
+
+<span class="comment"># 3. Commit</span>
+<span class="cmd">git commit -m "Initial commit: CUTM Campus News"</span>
+
+<span class="comment"># 4. Set branch name and link to GitHub</span>
+<span class="cmd">git branch -M main</span>
+<span class="cmd">git remote add origin https://github.com/srivalliSana/news_update.git</span>
+
+<span class="comment"># 5. Push</span>
+<span class="cmd">git push -u origin main</span></pre>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">🔄 For Every Future Update</div>
+      <pre><span class="comment"># Stage changed files</span>
+<span class="cmd">git add .</span>
+
+<span class="comment"># Commit with a message describing the change</span>
+<span class="cmd">git commit -m <span class="str">"your message here"</span></span>
+
+<span class="comment"># Push to GitHub</span>
+<span class="cmd">git push</span></pre>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">🗂️ What's on GitHub vs Local Only</div>
+      <div class="grid-2">
+        <div>
+          <p style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ On GitHub (pushed)</p>
+          <ul style="font-size:12px;color:var(--muted);list-style:none;line-height:2">
+            <li>📄 index.html, admin.html, archive.html</li>
+            <li>📄 app.js, archive.js, data.js, server.js</li>
+            <li>📄 style.css</li>
+            <li>📄 articles.json (dummy data)</li>
+            <li>📄 site-settings.json</li>
+            <li>📄 package.json, package-lock.json</li>
+            <li>📄 .gitignore, .env.example</li>
+          </ul>
+        </div>
+        <div>
+          <p style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">🔒 Local Only (secret)</p>
+          <ul style="font-size:12px;color:var(--muted);list-style:none;line-height:2">
+            <li>🔒 config.json (password + Slack secret)</li>
+            <li>🔒 node_modules/ (reinstall with npm install)</li>
+            <li>🔒 .env (if created)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box info" style="margin-top:8px">
+      <span class="icon">🔗</span>
+      <p><strong>Repository:</strong> <code>https://github.com/srivalliSana/news_update</code></p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       11 — How to Use
+  ══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">11</div>
+      <div>
+        <div class="section-title">How to Use — Step by Step</div>
+        <div class="section-desc">Getting started from scratch</div>
+      </div>
+    </div>
+
+    <div class="card avoid-break">
+      <div class="card-title">🚀 Run the Project</div>
+      <ol class="steps">
+        <li><div class="step-body"><strong>Clone from GitHub</strong><span><code>git clone https://github.com/srivalliSana/news_update.git</code> then <code>cd news_update</code></span></div></li>
+        <li><div class="step-body"><strong>Install dependencies</strong><span>Run <code>npm install</code> — installs express and dotenv</span></div></li>
+        <li><div class="step-body"><strong>Start the server</strong><span>Run <code>npm start</code> — server starts on port 3000, articles.json is seeded automatically</span></div></li>
+        <li><div class="step-body"><strong>Open the website</strong><span>Visit <code>http://localhost:3000</code> in your browser</span></div></li>
+        <li><div class="step-body"><strong>Open the admin portal</strong><span>Visit <code>http://localhost:3000/admin.html</code> and log in with <code>cutm@admin</code></span></div></li>
+        <li><div class="step-body"><strong>Change admin password</strong><span>Admin → Settings tab → enter new password → Update Password</span></div></li>
+      </ol>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">✏️ Publish a New Article</div>
+      <div class="grid-2">
+        <div>
+          <p style="font-size:12px;font-weight:700;margin-bottom:8px">Via Admin Panel</p>
+          <ol class="steps" style="font-size:12px">
+            <li><div class="step-body"><strong>Open Admin Portal</strong><span>http://localhost:3000/admin.html</span></div></li>
+            <li><div class="step-body"><strong>Articles tab → + Add Article</strong><span>Fill in all fields</span></div></li>
+            <li><div class="step-body"><strong>Click Publish Article</strong><span>Appears on website immediately</span></div></li>
+          </ol>
+        </div>
+        <div>
+          <p style="font-size:12px;font-weight:700;margin-bottom:8px">Via Slack</p>
+          <ol class="steps" style="font-size:12px">
+            <li><div class="step-body"><strong>Set up Slack app</strong><span>See Section 07</span></div></li>
+            <li><div class="step-body"><strong>Type in any channel</strong><span><code>/publish Section | Title | Summary | Author</code></span></div></li>
+            <li><div class="step-body"><strong>Done</strong><span>Channel sees confirmation, article is live</span></div></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="card avoid-break" style="margin-top:4px">
+      <div class="card-title">⚠️ Important Notes</div>
+      <div class="info-box warn">
+        <span class="icon">⚠️</span>
+        <p><strong>config.json is never pushed to GitHub</strong> — so after cloning on a new machine, you need to set your admin password and Slack secret again via the admin portal. The server uses defaults (<code>cutm@admin</code>) if config.json doesn't exist.</p>
+      </div>
+      <div class="info-box warn" style="margin-top:8px">
+        <span class="icon">⚠️</span>
+        <p><strong>Slack slash commands need a public URL</strong> — use ngrok (<code>ngrok http 3000</code>) while developing locally. For production, deploy to a cloud service like Railway, Render, or a VPS.</p>
+      </div>
+      <div class="info-box ok" style="margin-top:8px">
+        <span class="icon">✅</span>
+        <p><strong>Remove dummy data later</strong> — go to Admin → Articles → delete or replace the 18 sample articles, or just edit them with real CUTM content.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:32px 0 16px;border-top:2px solid var(--border);margin-top:32px">
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--navy) 60%,var(--gold));color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center">CU</div>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:var(--navy)">CUTM Campus News</div>
+        <div style="font-size:11px;color:var(--muted)">Centurion University of Technology and Management</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted)">Built with HTML · CSS · JavaScript · Node.js · Express &nbsp;|&nbsp; github.com/srivalliSana/news_update</p>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>
