@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Archive - CUTM Campus News</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="container top-bar-inner">
+      <span id="current-datetime"></span>
+      <div class="top-links">
+        <a href="index.html">Home</a>
+        <a href="#" onclick="toggleDarkMode()">Dark Mode</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="logo">
+        <a href="index.html" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:14px;">
+          <div class="logo-emblem">CU</div>
+          <div>
+            <h1>CUTM <span>Campus News</span></h1>
+            <p class="tagline">Centurion University of Technology and Management</p>
+          </div>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav class="main-nav">
+    <div class="container nav-inner">
+      <ul class="nav-list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html">Campus</a></li>
+        <li><a href="index.html">Academics</a></li>
+        <li><a href="index.html">Events</a></li>
+        <li><a href="index.html">Sports</a></li>
+        <li><a href="index.html">Placements</a></li>
+        <li><a href="index.html">Research</a></li>
+        <li><a href="archive.html" class="active">Archive</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Archive Page -->
+  <main class="container archive-main">
+    <div class="archive-header">
+      <h2>News Archive</h2>
+      <p>Browse all past campus updates organized by date and section.</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="archive-filters">
+      <div class="filter-group">
+        <label>Filter by Section:</label>
+        <select id="archive-category" onchange="renderArchive()">
+          <option value="All">All Sections</option>
+          <option value="Campus">Campus</option>
+          <option value="Academics">Academics</option>
+          <option value="Events">Events</option>
+          <option value="Sports">Sports</option>
+          <option value="Placements">Placements</option>
+          <option value="Research">Research</option>
+          <option value="Achievements">Achievements</option>
+          <option value="Alumni">Alumni</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Filter by Month:</label>
+        <select id="archive-month" onchange="renderArchive()">
+          <option value="All">All Months</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Search:</label>
+        <input type="text" id="archive-search" placeholder="Search archive..." oninput="renderArchive()" />
+      </div>
+    </div>
+
+    <!-- Archive List grouped by date -->
+    <div id="archive-grouped" class="archive-grouped"></div>
+  </main>
+
+  <!-- Article Modal -->
+  <div id="article-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeModal()"></div>
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo-row">
+          <div class="footer-emblem">CU</div>
+          <div>
+            <h3>CUTM Campus News</h3>
+            <p>Centurion University of Technology and Management</p>
+          </div>
+        </div>
+        <p class="footer-addr">R. Sitapur, Paralakhemundi, Odisha – 761211</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Centurion University of Technology and Management. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="archive.js"></script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CUTM Campus News - Centurion University</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="container top-bar-inner">
+      <span id="current-datetime"></span>
+      <div class="top-links">
+        <a href="archive.html">Archive</a>
+        <a href="#" onclick="openSearch()">Search</a>
+        <a href="#" onclick="toggleDarkMode()">Dark Mode</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Overlay -->
+  <div id="search-overlay" class="search-overlay hidden">
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Search campus news..." oninput="searchNews()" />
+      <button onclick="closeSearch()">✕</button>
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="logo">
+        <div class="logo-emblem">CU</div>
+        <div>
+          <h1>CUTM <span>Campus News</span></h1>
+          <p class="tagline">Centurion University of Technology and Management</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="https://cutm.ac.in" target="_blank" class="btn-visit">Visit CUTM ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav class="main-nav">
+    <div class="container nav-inner">
+      <ul class="nav-list" id="nav-list">
+        <li><a href="#" class="active" onclick="filterCategory('All', this)">All</a></li>
+        <li><a href="#" onclick="filterCategory('Campus', this)">Campus</a></li>
+        <li><a href="#" onclick="filterCategory('Academics', this)">Academics</a></li>
+        <li><a href="#" onclick="filterCategory('Events', this)">Events</a></li>
+        <li><a href="#" onclick="filterCategory('Sports', this)">Sports</a></li>
+        <li><a href="#" onclick="filterCategory('Placements', this)">Placements</a></li>
+        <li><a href="#" onclick="filterCategory('Research', this)">Research</a></li>
+        <li><a href="#" onclick="filterCategory('Achievements', this)">Achievements</a></li>
+        <li><a href="#" onclick="filterCategory('Alumni', this)">Alumni</a></li>
+        <li><a href="archive.html">Archive</a></li>
+      </ul>
+      <button class="hamburger" onclick="toggleNav()">☰</button>
+    </div>
+  </nav>
+
+  <!-- Announcement Ticker -->
+  <div class="breaking-bar">
+    <div class="container breaking-inner">
+      <span class="breaking-label">NOTICE</span>
+      <div class="ticker-wrap">
+        <div class="ticker" id="ticker"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container main-layout">
+    <!-- Featured Hero -->
+    <section class="hero-section" id="hero-section"></section>
+
+    <!-- Content Grid -->
+    <div class="content-wrapper">
+      <!-- News Feed -->
+      <section class="news-feed">
+        <div class="feed-header">
+          <h2 id="feed-title">Latest Updates</h2>
+          <div class="sort-options">
+            <button class="sort-btn active" onclick="setSortOrder('newest', this)">Newest First</button>
+            <button class="sort-btn" onclick="setSortOrder('oldest', this)">Oldest First</button>
+          </div>
+        </div>
+        <div id="news-list" class="news-list"></div>
+        <div id="load-more-wrap" class="load-more-wrap">
+          <button onclick="loadMore()" class="btn-load-more">Load More</button>
+        </div>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="widget">
+          <h3 class="widget-title">Recent Updates</h3>
+          <ol id="trending-list" class="trending-list"></ol>
+        </div>
+        <div class="widget">
+          <h3 class="widget-title">Sections</h3>
+          <div id="category-counts" class="category-counts"></div>
+        </div>
+        <div class="widget notice-widget">
+          <h3 class="widget-title">Quick Links</h3>
+          <ul class="quick-links" id="quick-links-list">
+            <li><a href="https://cutm.ac.in" target="_blank">Official Website ↗</a></li>
+            <li><a href="#">Exam Schedule</a></li>
+            <li><a href="archive.html">News Archive</a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Article Modal -->
+  <div id="article-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeModal()"></div>
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo-row">
+          <div class="footer-emblem">CU</div>
+          <div>
+            <h3>CUTM Campus News</h3>
+            <p>Centurion University of Technology and Management</p>
+          </div>
+        </div>
+        <p class="footer-addr">R. Sitapur, Paralakhemundi, Odisha – 761211</p>
+      </div>
+      <div class="footer-links">
+        <h4>Sections</h4>
+        <ul>
+          <li><a href="#" onclick="filterCategory('Campus',null)">Campus</a></li>
+          <li><a href="#" onclick="filterCategory('Academics',null)">Academics</a></li>
+          <li><a href="#" onclick="filterCategory('Events',null)">Events</a></li>
+          <li><a href="#" onclick="filterCategory('Sports',null)">Sports</a></li>
+          <li><a href="#" onclick="filterCategory('Placements',null)">Placements</a></li>
+          <li><a href="#" onclick="filterCategory('Research',null)">Research</a></li>
+        </ul>
+      </div>
+      <div class="footer-links">
+        <h4>University</h4>
+        <ul>
+          <li><a href="https://cutm.ac.in" target="_blank">Official Website</a></li>
+          <li><a href="#">About CUTM</a></li>
+          <li><a href="#">Contact Us</a></li>
+          <li><a href="archive.html">Archive</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Centurion University of Technology and Management. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
