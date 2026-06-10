@@ -1,0 +1,23 @@
+[Unit]
+Description=CUTM Campus News (Node/Express)
+After=network.target
+
+[Service]
+Type=simple
+# The user that owns the app folder (created in DEPLOY.md). Change if you used another.
+User=cutm
+Group=cutm
+WorkingDirectory=/home/cutm/news_update
+ExecStart=/usr/bin/node server.js
+# App reads PORT / SLACK_* from the .env in WorkingDirectory (via dotenv)
+Environment=NODE_ENV=production
+Restart=on-failure
+RestartSec=5
+
+# Basic hardening
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

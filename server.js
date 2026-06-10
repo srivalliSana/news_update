@@ -216,7 +216,24 @@ function cleanSlackText(s = '') {
     .replace(/<(https?:\/\/[^>]+)>/g, '$1')     // <url> → url
     .replace(/<@[^>]+>/g, '')                   // strip @user mentions
     .replace(/<![^>]+>/g, '')                   // strip @here / @channel
+    .replace(/\*([^*\n]+)\*/g, '$1')            // *bold*   → bold
+    .replace(/~([^~\n]+)~/g, '$1')              // ~strike~ → strike
+    .replace(/`([^`\n]+)`/g, '$1')              // `code`   → code
+    .replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1$2') // _italic_ → italic
     .trim();
+}
+
+// Trim to a length without cutting a word in half; add an ellipsis if shortened
+function smartTrim(s = '', n) {
+  if (s.length <= n) return s;
+  const cut = s.slice(0, n);
+  const sp  = cut.lastIndexOf(' ');
+  return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\-]+$/, '') + '…';
+}
+
+// Greeting lines we don't want as a headline ("Good morning all", "Dear team"…)
+function isGreeting(line = '') {
+  return /^(hi+|hey|hello|good\s+(morning|afternoon|evening|day)|greetings|namaste|namaskar|dear\s+(all|team|sir|madam|everyone)|respected|warm\s+greetings)\b/i.test(line.trim());
 }
 
 // Turn a free-form Slack message into article fields.
@@ -239,10 +256,22 @@ function parseMessage(text = '') {
   }
 
   const body  = cleanSlackText(text.replace(tagRe, ''));
-  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
-  const title = (lines.shift() || 'Campus Update').slice(0, 140);
-  const paras = lines;
-  const summary = (paras[0] || title).slice(0, 200);
+  let lines   = body.split('\n').map(l => l.trim()).filter(Boolean);
+  // Drop leading greeting lines so they don't become the headline
+  while (lines.length > 1 && isGreeting(lines[0])) lines.shift();
+
+  const opener = lines[0] || 'Campus Update';
+  let title, paras;
+  if (opener.length > 90) {
+    // Chatty opener with no short headline → headline = its first sentence,
+    // and keep the full text in the body so nothing is lost.
+    title = smartTrim(opener.split(/(?<=[.!?])\s/)[0], 140);
+    paras = lines;
+  } else {
+    title = smartTrim(opener, 140);
+    paras = lines.slice(1);
+  }
+  const summary = smartTrim(paras[0] || title, 200);
   const content = paras.length ? paras.map(p => `<p>${p}</p>`).join('') : `<p>${title}</p>`;
   // No explicit #Section hashtag → auto-detect category from the words
   if (!category) category = detectCategory(`${title}\n${paras.join('\n')}`);
