@@ -209,6 +209,31 @@ async function firstImageUrl(files, token) {
   return img ? downloadSlackImage(img, token) : null;
 }
 
+// Build an article object from a Slack message (used by both the events push
+// path and the pull/sync path). Does not mutate `existing`.
+async function buildArticle(msg, token, existing) {
+  const parsed = parseMessage(msg.text || '');
+  const img    = await firstImageUrl(msg.files, token);
+  const author = (await resolveUserName(msg.user, token)) || 'Campus Desk';
+  const tsMs   = msg.ts ? Math.round(Number(msg.ts) * 1000) : Date.now();
+  return {
+    id:        nextId(existing),
+    title:     parsed.title,
+    summary:   parsed.summary,
+    content:   parsed.content,
+    category:  parsed.category,
+    author,
+    image:     img || DEFAULT_IMAGES[parsed.category],
+    timestamp: new Date(tsMs).toISOString(),   // use the Slack post time
+    featured:  parsed.featured,
+    breaking:  parsed.breaking,
+    archived:  false,
+    tags:      parsed.tags,
+    postedBy:  author,
+    slackTs:   msg.ts
+  };
+}
+
 // Light Slack-mrkdwn cleanup → plain text
 function cleanSlackText(s = '') {
   return s
@@ -323,6 +348,20 @@ app.post('/admin/config', requireAdmin, (req, res) => {
   if (typeof adminPassword      === 'string' && adminPassword.length >= 6) cfg.adminPassword = adminPassword;
   saveConfig(cfg);
   res.json({ ok: true, slackConfigured: !!cfg.slackSigningSecret, botConfigured: !!cfg.slackBotToken });
+});
+
+// Verify the bot token / connection (auth.test)
+app.get('/admin/slack/test', requireAdmin, async (_req, res) => {
+  const cfg = loadConfig();
+  if (!cfg.slackBotToken) return res.json({ ok: false, error: 'No bot token configured.' });
+  try { res.json(await slackApi('auth.test', {}, cfg.slackBotToken)); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+// Pull recent channel messages now and turn them into articles
+app.post('/admin/slack/sync', requireAdmin, async (_req, res) => {
+  try { res.json(await syncFromSlack()); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
 // ============================================================
@@ -569,31 +608,48 @@ async function handleSlackMessage(event, token) {
   const articles = loadArticles();
   if (articles.some(a => a.slackTs === event.ts)) return;    // already ingested
 
-  const parsed = parseMessage(event.text || '');
-  const img    = await firstImageUrl(event.files, token);
-  const author = (await resolveUserName(event.user, token)) || 'Campus Desk';
-
-  if (parsed.featured) articles.forEach(a => { a.featured = false; });
-
-  const article = {
-    id:        nextId(articles),
-    title:     parsed.title,
-    summary:   parsed.summary,
-    content:   parsed.content,
-    category:  parsed.category,
-    author,
-    image:     img || DEFAULT_IMAGES[parsed.category],
-    timestamp: new Date().toISOString(),
-    featured:  parsed.featured,
-    breaking:  parsed.breaking,
-    archived:  false,
-    tags:      parsed.tags,
-    postedBy:  author,
-    slackTs:   event.ts
-  };
+  const article = await buildArticle(event, token, articles);
+  if (article.featured) articles.forEach(a => { a.featured = false; });
   articles.unshift(article);
   saveArticles(articles);
   console.log(`[SLACK] Auto-published #${article.id} "${article.title}" from channel message`);
+}
+
+// ============================================================
+// Slack PULL / SYNC — fetch recent channel messages with the bot token.
+// Needs only xoxb token + channel ID — no Event Subscriptions, no public URL.
+// Runs on a timer and can be triggered from the admin portal.
+// ============================================================
+async function syncFromSlack() {
+  const cfg = loadConfig();
+  if (!cfg.slackBotToken || !cfg.slackChannel)
+    return { ok: false, reason: 'Add a bot token and channel ID first.' };
+
+  const channels = cfg.slackChannel.split(',').map(s => s.trim()).filter(Boolean);
+  let created = 0;
+
+  for (const channel of channels) {
+    const r = await slackApi('conversations.history', { channel, limit: 100 }, cfg.slackBotToken);
+    if (!r.ok) { console.error(`[SLACK] conversations.history (${channel}):`, r.error); continue; }
+
+    const articles = loadArticles();
+    // oldest → newest so the newest message ends up on top after unshift
+    for (const msg of (r.messages || []).slice().reverse()) {
+      if (msg.subtype && msg.subtype !== 'file_share') continue;     // skip joins/pins/system
+      if (msg.bot_id) continue;                                      // skip bot/app posts
+      if (msg.thread_ts && msg.thread_ts !== msg.ts) continue;       // skip thread replies
+      if (!(msg.text || (msg.files && msg.files.length))) continue;  // skip empty
+      if (articles.some(a => a.slackTs === msg.ts)) continue;        // already ingested
+
+      const article = await buildArticle(msg, cfg.slackBotToken, articles);
+      if (article.featured) articles.forEach(a => { a.featured = false; });
+      articles.unshift(article);
+      created++;
+      console.log(`[SLACK] Pulled #${article.id} "${article.title}" [${article.category}]`);
+    }
+    saveArticles(articles);
+  }
+  return { ok: true, created };
 }
 
 // ============================================================
@@ -607,3 +663,12 @@ app.listen(PORT, () => {
   console.log(`    Admin portal      →  http://localhost:${PORT}/admin.html`);
   console.log(`    Default password  →  cutm@admin\n`);
 });
+
+// Pull from Slack on a schedule (outbound API calls — no public URL required)
+const SLACK_SYNC_MS = Number(process.env.SLACK_SYNC_MS) || 60000;
+setInterval(() => {
+  syncFromSlack().catch(e => console.error('[SLACK] sync error:', e.message));
+}, SLACK_SYNC_MS);
+syncFromSlack()
+  .then(r => { if (r && r.ok && r.created) console.log(`[SLACK] Initial sync pulled ${r.created} article(s).`); })
+  .catch(() => {});

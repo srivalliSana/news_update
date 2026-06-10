@@ -433,6 +433,12 @@
             <button class="btn btn-primary" onclick="saveBot()">Save Bot Settings</button>
             <button class="btn btn-ghost" onclick="clearBot()">Clear Token</button>
           </div>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn btn-primary" onclick="syncSlack()">⬇ Pull from Slack now</button>
+            <button class="btn btn-ghost" onclick="testSlack()">Test connection</button>
+          </div>
+          <p id="slack-sync-result" class="hint" style="margin-top:8px"></p>
+          <p class="hint">The server also pulls automatically every 60 seconds — no public URL or Event Subscriptions needed, just the bot token + channel ID above.</p>
           <div class="instr" style="margin-top:16px">
             <h4>Event Subscriptions Request URL</h4>
             <p style="font-size:13px;color:var(--muted)">In <strong>Slack App → Event Subscriptions</strong>, paste this URL and subscribe the bot to <code>message.channels</code>:</p>
@@ -1011,6 +1017,35 @@ async function clearBot() {
   await api('/admin/config','POST',{ slackBotToken: '' });
   toast('Bot token cleared.','');
   loadSlackStatus();
+}
+
+async function testSlack() {
+  const el = document.getElementById('slack-sync-result');
+  el.textContent = 'Testing connection…';
+  try {
+    const res = await api('/admin/slack/test');
+    const d = await res.json();
+    el.textContent = d.ok
+      ? `✅ Connected as "${d.user || 'bot'}" in workspace "${d.team || ''}".`
+      : `❌ ${d.error || 'Connection failed.'}`;
+  } catch { el.textContent = '❌ Error contacting server.'; }
+}
+
+async function syncSlack() {
+  const el = document.getElementById('slack-sync-result');
+  el.textContent = 'Pulling messages from Slack…';
+  try {
+    const res = await api('/admin/slack/sync','POST',{});
+    const d = await res.json();
+    if (d.ok) {
+      el.textContent = d.created
+        ? `✅ Pulled ${d.created} new article(s) from Slack.`
+        : 'Up to date — no new messages to pull.';
+      loadArticles();
+    } else {
+      el.textContent = `❌ ${d.reason || d.error || 'Sync failed.'}`;
+    }
+  } catch { el.textContent = '❌ Error contacting server.'; }
 }
 
 function toggleEye(inputId, btn) {
