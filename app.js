@@ -9,6 +9,15 @@ let currentCategory = 'All';
 let sortOrder       = 'newest';
 let visibleCount    = 6;
 const PAGE_SIZE     = 6;
+let lastSignature   = '';                 // change-detector for live polling
+const REFRESH_MS    = 15000;              // how often to check the server for updates
+
+// Cheap fingerprint of the article list — changes when anything publish-relevant changes
+function articlesSignature(list) {
+  return list
+    .map(a => `${a.id}:${a.timestamp}:${a.image}:${a.archived ? 1 : 0}:${a.featured ? 1 : 0}`)
+    .join('|');
+}
 
 // ── Fetch everything from API ──────────────────────────────
 async function loadAllData() {
@@ -21,6 +30,7 @@ async function loadAllData() {
 
     if (artRes.ok) {
       const raw = await artRes.json();
+      lastSignature = articlesSignature(raw);
       ALL_ARTICLES = raw.map(a => ({ ...a, timestamp: new Date(a.timestamp) }));
     }
 
@@ -36,6 +46,32 @@ async function loadAllData() {
 
   } catch {
     // Server not running — UI shows empty state
+  }
+}
+
+// ── Live refresh — polls the server so Slack updates appear by themselves ──
+async function refreshData() {
+  try {
+    const res = await fetch('/api/articles');
+    if (!res.ok) return;
+    const raw = await res.json();
+
+    const sig = articlesSignature(raw);
+    if (sig === lastSignature) return;            // nothing changed — skip re-render
+    lastSignature = sig;
+    ALL_ARTICLES  = raw.map(a => ({ ...a, timestamp: new Date(a.timestamp) }));
+
+    // Don't reflow the page out from under an open modal or search
+    const modalOpen  = !document.getElementById('article-modal').classList.contains('hidden');
+    const searchOpen = !document.getElementById('search-overlay').classList.contains('hidden');
+    if (modalOpen || searchOpen) return;
+
+    renderHero();
+    renderNewsList();        // keeps current category / sort / visibleCount
+    renderTrending();
+    renderCategoryCounts();
+  } catch {
+    // transient network/server hiccup — try again next tick
   }
 }
 
@@ -316,4 +352,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderNewsList();
   renderTrending();
   renderCategoryCounts();
+
+  setInterval(refreshData, REFRESH_MS);   // keep the feed live
 });

@@ -15,11 +15,14 @@ const ARTICLES_FILE      = path.join(__dirname, 'articles.json');
 const CONFIG_FILE        = path.join(__dirname, 'config.json');
 const SITE_SETTINGS_FILE = path.join(__dirname, 'site-settings.json');
 
-app.use(express.urlencoded({
-  extended: true,
-  verify: (req, _res, buf) => { req.rawBody = buf.toString(); }
-}));
-app.use(express.json());
+const captureRaw = (req, _res, buf) => { req.rawBody = buf.toString(); };
+app.use(express.urlencoded({ extended: true, verify: captureRaw }));
+app.use(express.json({ verify: captureRaw }));
+
+// Folder where photos pulled from Slack are stored and served from
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 app.use(express.static(__dirname));
 
 // ============================================================
@@ -58,10 +61,16 @@ function loadArticles() {
 function saveArticles(a) { fs.writeFileSync(ARTICLES_FILE, JSON.stringify(a, null, 2)); }
 
 function loadConfig() {
+  const cfg = { slackSigningSecret:'', slackBotToken:'', slackChannel:'', adminPassword:'cutm@admin' };
   try {
     const raw = fs.readFileSync(CONFIG_FILE, 'utf8').trim();
-    return raw ? { slackSigningSecret:'', adminPassword:'cutm@admin', ...JSON.parse(raw) } : { slackSigningSecret:'', adminPassword:'cutm@admin' };
-  } catch { return { slackSigningSecret:'', adminPassword:'cutm@admin' }; }
+    if (raw) Object.assign(cfg, JSON.parse(raw));
+  } catch {}
+  // .env fallback — only fills values not already set in config.json
+  if (!cfg.slackSigningSecret && process.env.SLACK_SIGNING_SECRET) cfg.slackSigningSecret = process.env.SLACK_SIGNING_SECRET.trim();
+  if (!cfg.slackBotToken      && process.env.SLACK_BOT_TOKEN)      cfg.slackBotToken      = process.env.SLACK_BOT_TOKEN.trim();
+  if (!cfg.slackChannel       && process.env.SLACK_CHANNEL)        cfg.slackChannel       = process.env.SLACK_CHANNEL.trim();
+  return cfg;
 }
 function saveConfig(c) { fs.writeFileSync(CONFIG_FILE, JSON.stringify(c, null, 2)); }
 
@@ -125,6 +134,91 @@ function verifySlack(req, res, next) {
 }
 
 // ============================================================
+// Slack Web API helpers (need a bot token: xoxb-…)
+// ============================================================
+async function slackApi(method, params, token) {
+  const res = await fetch(`https://slack.com/api/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json; charset=utf-8', 'Authorization':`Bearer ${token}` },
+    body: JSON.stringify(params || {})
+  });
+  return res.json();
+}
+
+// Resolve a Slack user id (U…) to a human display name, cached
+const userNameCache = new Map();
+async function resolveUserName(userId, token) {
+  if (!userId || !token) return null;
+  if (userNameCache.has(userId)) return userNameCache.get(userId);
+  try {
+    const r = await slackApi('users.info', { user: userId }, token);
+    const p = r.ok ? r.user.profile : null;
+    const name = p ? (p.real_name || p.display_name || r.user.name) : null;
+    if (name) userNameCache.set(userId, name);
+    return name;
+  } catch { return null; }
+}
+
+// Download a private Slack file (needs the bot token) and re-host it under /uploads
+async function downloadSlackImage(file, token) {
+  try {
+    const r = await fetch(file.url_private_download || file.url_private, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok) return null;
+    const buf  = Buffer.from(await r.arrayBuffer());
+    const ext  = (file.filetype || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const name = `slack_${file.id || Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, name), buf);
+    return `/uploads/${name}`;
+  } catch { return null; }
+}
+
+async function firstImageUrl(files, token) {
+  if (!Array.isArray(files) || !token) return null;
+  const img = files.find(f => (f.mimetype || '').startsWith('image/'));
+  return img ? downloadSlackImage(img, token) : null;
+}
+
+// Light Slack-mrkdwn cleanup → plain text
+function cleanSlackText(s = '') {
+  return s
+    .replace(/<([^|>]+)\|([^>]+)>/g, '$2')      // <url|label> → label
+    .replace(/<(https?:\/\/[^>]+)>/g, '$1')     // <url> → url
+    .replace(/<@[^>]+>/g, '')                   // strip @user mentions
+    .replace(/<![^>]+>/g, '')                   // strip @here / @channel
+    .trim();
+}
+
+// Turn a free-form Slack message into article fields.
+// Convention: first line = headline, rest = body. Hashtags drive metadata:
+//   #<Section> sets the category, #breaking/#notice flags a notice,
+//   #featured pins it to the hero, any other #tag becomes a tag.
+function parseMessage(text = '') {
+  const tagRe    = /#([A-Za-z][A-Za-z0-9_-]*)/g;
+  const hashtags = [...text.matchAll(tagRe)].map(m => m[1]);
+
+  let category = 'Campus', breaking = false, featured = false;
+  const tags = [];
+  for (const h of hashtags) {
+    const lc      = h.toLowerCase();
+    const section = VALID_SECTIONS.find(s => s.toLowerCase() === lc);
+    if (section)                             { category = section; continue; }
+    if (lc === 'breaking' || lc === 'notice') { breaking = true;   continue; }
+    if (lc === 'featured')                    { featured = true;   continue; }
+    tags.push(h);
+  }
+
+  const body  = cleanSlackText(text.replace(tagRe, ''));
+  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+  const title = (lines.shift() || 'Campus Update').slice(0, 140);
+  const paras = lines;
+  const summary = (paras[0] || title).slice(0, 200);
+  const content = paras.length ? paras.map(p => `<p>${p}</p>`).join('') : `<p>${title}</p>`;
+  return { title, summary, content, category, breaking, featured, tags: tags.length ? tags : [category] };
+}
+
+// ============================================================
 // Public API
 // ============================================================
 app.get('/api/articles',   (_req, res) => res.json(loadArticles()));
@@ -152,16 +246,23 @@ app.post('/admin/logout', requireAdmin, (req, res) => {
 // Admin — Config (Slack secret, admin password)
 // ============================================================
 app.get('/admin/config', requireAdmin, (_req, res) => {
-  res.json({ slackConfigured: !!loadConfig().slackSigningSecret });
+  const cfg = loadConfig();
+  res.json({
+    slackConfigured: !!cfg.slackSigningSecret,
+    botConfigured:   !!cfg.slackBotToken,
+    slackChannel:    cfg.slackChannel || ''
+  });
 });
 
 app.post('/admin/config', requireAdmin, (req, res) => {
   const cfg = loadConfig();
-  const { slackSigningSecret, adminPassword } = req.body;
+  const { slackSigningSecret, slackBotToken, slackChannel, adminPassword } = req.body;
   if (typeof slackSigningSecret === 'string') cfg.slackSigningSecret = slackSigningSecret.trim();
+  if (typeof slackBotToken      === 'string') cfg.slackBotToken      = slackBotToken.trim();
+  if (typeof slackChannel       === 'string') cfg.slackChannel       = slackChannel.trim();
   if (typeof adminPassword      === 'string' && adminPassword.length >= 6) cfg.adminPassword = adminPassword;
   saveConfig(cfg);
-  res.json({ ok: true, slackConfigured: !!cfg.slackSigningSecret });
+  res.json({ ok: true, slackConfigured: !!cfg.slackSigningSecret, botConfigured: !!cfg.slackBotToken });
 });
 
 // ============================================================
@@ -325,6 +426,115 @@ app.post('/slack/delete', verifySlack, (req, res) => {
   const [r] = articles.splice(index,1); saveArticles(articles);
   res.json({ response_type:'in_channel', text:`🗑️ Article *#${id}* "${r.title}" deleted by @${user}.` });
 });
+
+// ============================================================
+// Slack Events API — auto-publish from channel messages
+//   Post a message  → new article (photos downloaded via bot token)
+//   Edit a message  → that article is updated
+//   Delete a message→ that article is removed
+// ============================================================
+const processedEvents = new Set();
+
+app.post('/slack/events', verifySlack, (req, res) => {
+  const { type, challenge, event, event_id } = req.body;
+
+  // 1. One-time URL verification handshake from Slack
+  if (type === 'url_verification') return res.send(challenge);
+
+  // 2. Ack immediately — Slack retries anything that isn't a fast 200
+  res.sendStatus(200);
+  if (type !== 'event_callback' || !event || event.type !== 'message') return;
+
+  // De-dupe Slack's retries
+  if (event_id) {
+    if (processedEvents.has(event_id)) return;
+    processedEvents.add(event_id);
+    if (processedEvents.size > 2000) processedEvents.delete(processedEvents.values().next().value);
+  }
+
+  const cfg     = loadConfig();
+  const allowed = (cfg.slackChannel || '').split(',').map(s => s.trim()).filter(Boolean);
+  const channel = event.channel || (event.message && event.message.channel);
+  if (allowed.length && !allowed.includes(channel)) return;   // not a watched channel
+
+  handleSlackMessage(event, cfg.slackBotToken)
+    .catch(e => console.error('[SLACK] event error:', e.message));
+});
+
+async function handleSlackMessage(event, token) {
+  const subtype = event.subtype;
+
+  // ── Deleted message → remove the article ──
+  if (subtype === 'message_deleted') {
+    const ts       = event.deleted_ts || (event.previous_message && event.previous_message.ts);
+    const articles = loadArticles();
+    const idx      = articles.findIndex(a => a.slackTs === ts);
+    if (idx !== -1) {
+      const [r] = articles.splice(idx, 1);
+      saveArticles(articles);
+      console.log(`[SLACK] Removed #${r.id} (source message deleted)`);
+    }
+    return;
+  }
+
+  // ── Edited message → update the article in place ──
+  if (subtype === 'message_changed') {
+    const msg = event.message || {};
+    if (msg.bot_id) return;
+    const articles = loadArticles();
+    const article  = articles.find(a => a.slackTs === msg.ts);
+    if (!article) return;                       // edit of something we never ingested
+    const parsed = parseMessage(msg.text || '');
+    const img    = await firstImageUrl(msg.files, token);
+    Object.assign(article, {
+      title:    parsed.title,
+      summary:  parsed.summary,
+      content:  parsed.content,
+      category: parsed.category,
+      breaking: parsed.breaking,
+      tags:     parsed.tags,
+      image:    img || article.image
+    });
+    if (parsed.featured) articles.forEach(a => { a.featured = (a === article); });
+    saveArticles(articles);
+    console.log(`[SLACK] Updated #${article.id} (source message edited)`);
+    return;
+  }
+
+  // ── New message → create an article ──
+  if (subtype && subtype !== 'file_share') return;          // ignore joins, pins, etc.
+  if (event.bot_id) return;                                  // ignore bot/app posts
+  if (event.thread_ts && event.thread_ts !== event.ts) return; // ignore thread replies
+
+  const articles = loadArticles();
+  if (articles.some(a => a.slackTs === event.ts)) return;    // already ingested
+
+  const parsed = parseMessage(event.text || '');
+  const img    = await firstImageUrl(event.files, token);
+  const author = (await resolveUserName(event.user, token)) || 'Campus Desk';
+
+  if (parsed.featured) articles.forEach(a => { a.featured = false; });
+
+  const article = {
+    id:        nextId(articles),
+    title:     parsed.title,
+    summary:   parsed.summary,
+    content:   parsed.content,
+    category:  parsed.category,
+    author,
+    image:     img || DEFAULT_IMAGES[parsed.category],
+    timestamp: new Date().toISOString(),
+    featured:  parsed.featured,
+    breaking:  parsed.breaking,
+    archived:  false,
+    tags:      parsed.tags,
+    postedBy:  author,
+    slackTs:   event.ts
+  };
+  articles.unshift(article);
+  saveArticles(articles);
+  console.log(`[SLACK] Auto-published #${article.id} "${article.title}" from channel message`);
+}
 
 // ============================================================
 // Start

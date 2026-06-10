@@ -411,6 +411,44 @@
         </div>
 
         <div class="card">
+          <div class="card-title">🤖 Bot Token & Auto-Publish</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+            <span style="font-size:13px;color:var(--muted)">Bot status:</span>
+            <span id="bot-pill" class="pill pill-no"><span class="pill-dot"></span>Not Configured</span>
+          </div>
+          <div class="form-row">
+            <label>Bot User OAuth Token (xoxb-…)</label>
+            <div class="secret-wrap">
+              <input type="password" id="bot-token" placeholder="Paste Bot User OAuth Token from Slack App → OAuth & Permissions" />
+              <button class="btn-eye" onclick="toggleEye('bot-token',this)">👁</button>
+            </div>
+            <p class="hint">Lets the site read channel messages and download the photos you post. Needs scopes <code>channels:history</code>, <code>files:read</code>, <code>users:read</code>.</p>
+          </div>
+          <div class="form-row">
+            <label>Channel ID to watch <span style="color:var(--muted)">(optional)</span></label>
+            <input type="text" id="slack-channel" placeholder="e.g. C0123456789 — blank = any channel the bot is in" />
+            <p class="hint">Only messages from this channel become articles. Copy the ID from the bottom of the channel's “View channel details”. Comma-separate for multiple.</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="saveBot()">Save Bot Settings</button>
+            <button class="btn btn-ghost" onclick="clearBot()">Clear Token</button>
+          </div>
+          <div class="instr" style="margin-top:16px">
+            <h4>Event Subscriptions Request URL</h4>
+            <p style="font-size:13px;color:var(--muted)">In <strong>Slack App → Event Subscriptions</strong>, paste this URL and subscribe the bot to <code>message.channels</code>:</p>
+            <div class="cmd-block"><span id="url-e">—</span></div>
+            <h4 style="margin-top:14px">Post to publish</h4>
+            <p style="font-size:13px;color:var(--muted)">In the watched channel, just post a message — the first line is the headline, the rest is the body, and any attached photo is pulled in automatically:</p>
+            <div class="cmd-block">
+TCS Campus Drive Results #Placements #breaking<br>
+30 students were selected today with a ₹3.6 LPA package.<br>
+Congratulations to all the students! 🎉
+            </div>
+            <p style="font-size:13px;color:var(--muted);margin-top:8px"><strong>Edit</strong> the Slack message → the article updates. <strong>Delete</strong> it → the article disappears. Section hashtags: <code>#Campus #Academics #Events #Sports #Placements #Research #Achievements #Alumni</code>. <code>#breaking</code> marks a notice; <code>#featured</code> pins it to the hero.</p>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title">⚡ Slash Commands to Register</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Register these in <strong>Slack App → Slash Commands</strong>. Replace the base URL with your public server URL (e.g. from ngrok).</p>
           <table class="urls-table">
@@ -614,6 +652,7 @@ function initDashboard() {
   document.getElementById('url-l').textContent = base + '/slack/list';
   document.getElementById('url-a').textContent = base + '/slack/archive';
   document.getElementById('url-d').textContent = base + '/slack/delete';
+  document.getElementById('url-e').textContent = base + '/slack/events';
   loadArticles();
   loadSlackStatus();
 }
@@ -942,7 +981,36 @@ async function loadSlackStatus() {
     const pill = document.getElementById('slack-pill');
     pill.className = 'pill ' + (data.slackConfigured ? 'pill-ok' : 'pill-no');
     pill.innerHTML = `<span class="pill-dot"></span>${data.slackConfigured ? 'Configured' : 'Not Configured'}`;
+
+    const bpill = document.getElementById('bot-pill');
+    if (bpill) {
+      bpill.className = 'pill ' + (data.botConfigured ? 'pill-ok' : 'pill-no');
+      bpill.innerHTML = `<span class="pill-dot"></span>${data.botConfigured ? 'Configured' : 'Not Configured'}`;
+    }
+    const ch = document.getElementById('slack-channel');
+    if (ch && data.slackChannel) ch.value = data.slackChannel;
   } catch {}
+}
+
+async function saveBot() {
+  const token   = document.getElementById('bot-token').value.trim();
+  const channel = document.getElementById('slack-channel').value.trim();
+  const payload = { slackChannel: channel };
+  if (token) payload.slackBotToken = token;
+  try {
+    const res = await api('/admin/config','POST',payload);
+    if (!res.ok) { toast('Save failed.','err'); return; }
+    document.getElementById('bot-token').value = '';
+    toast('Bot settings saved!','ok');
+    loadSlackStatus();
+  } catch { toast('Error.','err'); }
+}
+
+async function clearBot() {
+  if (!confirm('Clear the Slack bot token? Auto-publishing and photo downloads will stop.')) return;
+  await api('/admin/config','POST',{ slackBotToken: '' });
+  toast('Bot token cleared.','');
+  loadSlackStatus();
 }
 
 function toggleEye(inputId, btn) {
