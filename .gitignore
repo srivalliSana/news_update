@@ -8,6 +8,11 @@ config.json
 # Photos pulled from Slack
 uploads/
 
+# Runtime data — managed by the app, not version-controlled
+# (so a git pull never overwrites real posts, and fresh clones start clean)
+articles.json
+site-settings.json
+
 # OS files
 .DS_Store
 Thumbs.db

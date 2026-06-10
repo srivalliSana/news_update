@@ -599,7 +599,9 @@ async function handleSlackMessage(event, token) {
 // ============================================================
 // Start
 // ============================================================
-seedIfEmpty();
+// Demo content only seeds when explicitly requested (e.g. local dev: SEED_DEMO=true).
+// In production it stays off so the site shows only real, published articles.
+if (process.env.SEED_DEMO === 'true') seedIfEmpty();
 app.listen(PORT, () => {
   console.log(`\n✅  CUTM Campus News  →  http://localhost:${PORT}`);
   console.log(`    Admin portal      →  http://localhost:${PORT}/admin.html`);
