@@ -11,6 +11,7 @@ let visibleCount    = 6;
 const PAGE_SIZE     = 6;
 let lastSignature   = '';                 // change-detector for live polling
 const REFRESH_MS    = 15000;              // how often to check the server for updates
+const SECTION_ORDER = ['Campus','Academics','Events','Sports','Placements','Research','Achievements','Alumni'];
 
 // Cheap fingerprint of the article list — changes when anything publish-relevant changes
 function articlesSignature(list) {
@@ -66,8 +67,7 @@ async function refreshData() {
     const searchOpen = !document.getElementById('search-overlay').classList.contains('hidden');
     if (modalOpen || searchOpen) return;
 
-    renderHero();
-    renderNewsList();        // keeps current category / sort / visibleCount
+    applyView();             // re-renders the active view (sections or single feed)
     renderTrending();
     renderCategoryCounts();
   } catch {
@@ -95,6 +95,11 @@ function renderQuickLinks(links) {
 // ── Filters ───────────────────────────────────────────────
 function getActiveArticles() {
   return ALL_ARTICLES.filter(a => !a.archived);
+}
+
+// Active articles, newest first (descending)
+function sortedActive() {
+  return getActiveArticles().sort((a, b) => b.timestamp - a.timestamp);
 }
 
 function getFilteredArticles() {
@@ -134,55 +139,93 @@ function updateDatetime() {
   }) + ' | ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ── Hero ──────────────────────────────────────────────────
+// ── Hero (lead story + secondary headline list, TOI/NDTV style) ──
 function renderHero() {
   const section = document.getElementById('hero-section');
   if (!section) return;
 
-  const featured = getActiveArticles().find(a => a.featured)
-    || getActiveArticles().sort((a, b) => b.timestamp - a.timestamp)[0];
+  const active = sortedActive();
+  if (!active.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
 
-  if (!featured) { section.style.display = 'none'; return; }
+  const lead = active.find(a => a.featured) || active[0];
+  const rest = active.filter(a => a.id !== lead.id).slice(0, 4);
 
   section.innerHTML = `
-    <div class="hero-card" onclick="openArticle(${featured.id})">
-      <img src="${featured.image}" alt="${featured.title}" class="hero-img" loading="lazy" />
-      <div class="hero-overlay">
-        <span class="badge badge-${featured.category.toLowerCase()}">${featured.category}</span>
-        <h2 class="hero-title">${featured.title}</h2>
-        <p class="hero-summary">${featured.summary}</p>
-        <div class="hero-meta">
-          <span>By ${featured.author}</span>
-          <span>${timeAgo(featured.timestamp)}</span>
+    <div class="hero-grid">
+      <div class="hero-card" onclick="openArticle(${lead.id})">
+        <img src="${lead.image}" alt="${lead.title}" class="hero-img" loading="lazy" />
+        <div class="hero-overlay">
+          <span class="badge badge-${lead.category.toLowerCase()}">${lead.category}</span>
+          ${lead.breaking ? '<span class="breaking-badge" style="position:static;margin-left:6px">NOTICE</span>' : ''}
+          <h2 class="hero-title">${lead.title}</h2>
+          <p class="hero-summary">${lead.summary}</p>
+          <div class="hero-meta">
+            <span>By ${lead.author}</span>
+            <span>${timeAgo(lead.timestamp)}</span>
+          </div>
         </div>
       </div>
+      <div class="hero-side">
+        ${rest.map(a => `
+          <div class="hero-side-item" onclick="openArticle(${a.id})">
+            <img src="${a.image}" alt="${a.title}" class="hs-img" loading="lazy" />
+            <div class="hs-body">
+              <span class="badge badge-${a.category.toLowerCase()}">${a.category}</span>
+              <p class="hs-title">${a.title}</p>
+              <span class="hs-time">${timeAgo(a.timestamp)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
     </div>`;
 }
 
-// ── News Cards ────────────────────────────────────────────
-function createCard(article) {
-  const card = document.createElement('article');
-  card.className = 'news-card';
-  card.innerHTML = `
-    <div class="card-img-wrap">
-      <img src="${article.image}" alt="${article.title}" loading="lazy" class="card-img" />
-      ${article.breaking ? '<span class="breaking-badge">NOTICE</span>' : ''}
-    </div>
-    <div class="card-body">
-      <div class="card-meta-top">
-        <span class="badge badge-${article.category.toLowerCase()}">${article.category}</span>
-        <span class="card-time">${timeAgo(article.timestamp)}</span>
+// ── News Card (string template, reused by sections + single feed) ──
+function cardHTML(article) {
+  return `
+    <article class="news-card" onclick="openArticle(${article.id})">
+      <div class="card-img-wrap">
+        <img src="${article.image}" alt="${article.title}" loading="lazy" class="card-img" />
+        ${article.breaking ? '<span class="breaking-badge">NOTICE</span>' : ''}
       </div>
-      <h3 class="card-title">${article.title}</h3>
-      <p class="card-summary">${article.summary}</p>
-      <div class="card-footer">
-        <span class="card-author">${article.author}</span>
-        <button class="btn-read" onclick="openArticle(${article.id})">Read More →</button>
+      <div class="card-body">
+        <div class="card-meta-top">
+          <span class="badge badge-${article.category.toLowerCase()}">${article.category}</span>
+          <span class="card-time">${timeAgo(article.timestamp)}</span>
+        </div>
+        <h3 class="card-title">${article.title}</h3>
+        <p class="card-summary">${article.summary}</p>
+        <div class="card-footer">
+          <span class="card-author">${article.author}</span>
+          <span class="btn-read">Read More →</span>
+        </div>
       </div>
-    </div>`;
-  return card;
+    </article>`;
 }
 
+// ── ALL view: one block per category, newest-first ────────
+function renderSections() {
+  const wrap = document.getElementById('sections');
+  if (!wrap) return;
+  const active = sortedActive();
+
+  const blocks = SECTION_ORDER.map(cat => {
+    const items = active.filter(a => a.category === cat).slice(0, 4);
+    if (!items.length) return '';
+    return `
+      <section class="news-section">
+        <div class="section-head">
+          <h2 class="section-title" onclick="filterCategory('${cat}', null)">${cat}</h2>
+          <span class="section-more" onclick="filterCategory('${cat}', null)">View all →</span>
+        </div>
+        <div class="section-grid">${items.map(cardHTML).join('')}</div>
+      </section>`;
+  }).filter(Boolean).join('');
+
+  wrap.innerHTML = blocks || '<p class="no-results">No updates yet.</p>';
+}
+
+// ── SINGLE-CATEGORY view: full grid + load more ───────────
 function renderNewsList() {
   const list         = document.getElementById('news-list');
   const loadMoreWrap = document.getElementById('load-more-wrap');
@@ -191,14 +234,34 @@ function renderNewsList() {
   const articles = getFilteredArticles();
   const toShow   = articles.slice(0, visibleCount);
 
-  list.innerHTML = '';
   if (!toShow.length) {
     list.innerHTML = '<p class="no-results">No updates found in this section.</p>';
     loadMoreWrap.style.display = 'none';
     return;
   }
-  toShow.forEach(a => list.appendChild(createCard(a)));
+  list.innerHTML = toShow.map(cardHTML).join('');
   loadMoreWrap.style.display = visibleCount < articles.length ? 'flex' : 'none';
+}
+
+// ── Switch between the All (sectioned) view and a single category ──
+function applyView() {
+  const isAll      = currentCategory === 'All';
+  const hero       = document.getElementById('hero-section');
+  const sections   = document.getElementById('sections');
+  const singleFeed = document.getElementById('single-feed');
+
+  if (hero) hero.style.display = isAll ? '' : 'none';
+  if (sections)   sections.classList.toggle('hidden', !isAll);
+  if (singleFeed) singleFeed.classList.toggle('hidden', isAll);
+
+  if (isAll) {
+    renderHero();
+    renderSections();
+  } else {
+    const feedTitle = document.getElementById('feed-title');
+    if (feedTitle) feedTitle.textContent = currentCategory;
+    renderNewsList();
+  }
 }
 
 // ── Sidebar — Recent Updates ──────────────────────────────
@@ -230,14 +293,17 @@ function renderCategoryCounts() {
 }
 
 // ── Filter / Sort ─────────────────────────────────────────
-function filterCategory(cat, clickedEl) {
+function filterCategory(cat, _clickedEl) {
   currentCategory = cat;
   visibleCount    = PAGE_SIZE;
-  document.querySelectorAll('.nav-list a').forEach(a => a.classList.remove('active'));
-  if (clickedEl) clickedEl.classList.add('active');
-  const feedTitle = document.getElementById('feed-title');
-  if (feedTitle) feedTitle.textContent = cat === 'All' ? 'Latest Updates' : cat;
-  renderNewsList();
+  // Highlight the matching nav link (works whether the click came from the nav,
+  // a section header, or the footer)
+  document.querySelectorAll('.nav-list a').forEach(a => {
+    a.classList.toggle('active', a.textContent.trim() === cat);
+  });
+  const navList = document.getElementById('nav-list');
+  if (navList) navList.classList.remove('open');
+  applyView();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -348,8 +414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadAllData();    // articles + ticker + quick links from server
 
-  renderHero();
-  renderNewsList();
+  applyView();             // renders hero + category sections (All view by default)
   renderTrending();
   renderCategoryCounts();
 

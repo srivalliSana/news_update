@@ -76,30 +76,35 @@
 
   <!-- Main Content -->
   <main class="container main-layout">
-    <!-- Featured Hero -->
+    <!-- Featured Hero (lead + secondary headlines) — shown on the "All" view -->
     <section class="hero-section" id="hero-section"></section>
 
     <!-- Content Grid -->
     <div class="content-wrapper">
-      <!-- News Feed -->
-      <section class="news-feed">
-        <div class="feed-header">
-          <h2 id="feed-title">Latest Updates</h2>
-          <div class="sort-options">
-            <button class="sort-btn active" onclick="setSortOrder('newest', this)">Newest First</button>
-            <button class="sort-btn" onclick="setSortOrder('oldest', this)">Oldest First</button>
+      <div class="main-col">
+        <!-- ALL view: one block per category, newest-first -->
+        <div id="sections" class="sections"></div>
+
+        <!-- SINGLE-CATEGORY view: full grid + load more -->
+        <section id="single-feed" class="news-feed hidden">
+          <div class="feed-header">
+            <h2 id="feed-title">Latest Updates</h2>
+            <div class="sort-options">
+              <button class="sort-btn active" onclick="setSortOrder('newest', this)">Newest First</button>
+              <button class="sort-btn" onclick="setSortOrder('oldest', this)">Oldest First</button>
+            </div>
           </div>
-        </div>
-        <div id="news-list" class="news-list"></div>
-        <div id="load-more-wrap" class="load-more-wrap">
-          <button onclick="loadMore()" class="btn-load-more">Load More</button>
-        </div>
-      </section>
+          <div id="news-list" class="news-list"></div>
+          <div id="load-more-wrap" class="load-more-wrap">
+            <button onclick="loadMore()" class="btn-load-more">Load More</button>
+          </div>
+        </section>
+      </div>
 
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="widget">
-          <h3 class="widget-title">Recent Updates</h3>
+          <h3 class="widget-title">Most Read</h3>
           <ol id="trending-list" class="trending-list"></ol>
         </div>
         <div class="widget">

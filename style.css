@@ -852,3 +852,116 @@ body.dark .archive-header h2 { color: #7aabf0; }
   .archive-filters { flex-direction: column; }
   .btn-visit { display: none; }
 }
+
+/* ============================================================
+   NEWS-PORTAL LAYOUT  (Times of India / NDTV reference)
+   Campus brand stays navy; news accents are red + sectioned.
+   ============================================================ */
+:root { --news-red: #d4172a; --news-red-dk: #a30f1f; }
+body.dark { --news-red: #ff5667; }
+
+.main-col { min-width: 0; }                 /* let grid child shrink instead of overflow */
+.news-card { cursor: pointer; }             /* whole card is clickable now */
+.btn-read { display: inline-block; }
+
+/* Red accents across the portal */
+.breaking-bar   { border-bottom-color: var(--news-red); }
+.breaking-label { background: var(--news-red); }
+.breaking-badge { background: var(--news-red); }
+.news-card:hover { border-top-color: var(--news-red); }
+.nav-list li a:hover,
+.nav-list li a.active { border-bottom-color: var(--news-red); }
+.widget-title   { background: var(--news-red); }
+.cat-count      { background: var(--news-red); }
+.trending-list li:nth-child(1)::before { color: var(--news-red); }
+.feed-header    { border-bottom-color: var(--news-red); }
+.feed-header h2,
+body.dark .feed-header h2 { color: var(--text); }
+
+/* ---- HERO: big lead + stacked secondary headlines ---- */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.hero-grid .hero-img { height: 440px; }
+.hero-side { display: flex; flex-direction: column; gap: 12px; }
+.hero-side-item {
+  display: flex;
+  gap: 12px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  cursor: pointer;
+  flex: 1;
+  border-left: 3px solid transparent;
+  transition: border-color .2s, box-shadow .2s;
+}
+.hero-side-item:hover { border-left-color: var(--news-red); box-shadow: var(--shadow-lg); }
+.hs-img  { width: 108px; height: 100%; object-fit: cover; flex-shrink: 0; }
+.hs-body { padding: 10px 12px 10px 2px; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+.hs-title {
+  font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hs-time { font-size: 11px; color: var(--text-light); }
+
+/* ---- SECTION BLOCKS (one per category) ---- */
+.sections { display: flex; flex-direction: column; gap: 34px; }
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+.section-title {
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text);
+  padding: 4px 14px 9px 16px;
+  border-bottom: 3px solid var(--news-red);
+  margin-bottom: -2px;
+  cursor: pointer;
+  position: relative;
+}
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 11px;
+  width: 5px;
+  background: var(--news-red);
+  border-radius: 2px;
+}
+.section-more {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--news-red);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  cursor: pointer;
+  padding-bottom: 4px;
+}
+.section-more:hover { text-decoration: underline; }
+.section-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+
+/* ---- portal responsiveness ---- */
+@media (max-width: 1024px) {
+  .section-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-grid .hero-img { height: 300px; }
+  .hero-side { flex-direction: row; flex-wrap: wrap; }
+  .hero-side-item { flex: 1 1 240px; }
+  .hs-img { height: 88px; }
+  .section-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .hero-side { flex-direction: column; }
+  .section-grid { grid-template-columns: 1fr; }
+}

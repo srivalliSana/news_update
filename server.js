@@ -98,6 +98,35 @@ const DEFAULT_IMAGES = {
 };
 const VALID_SECTIONS = Object.keys(DEFAULT_IMAGES);
 
+// ── Keyword-based category detection ──────────────────────────
+// When a post has no explicit #Section hashtag, the category is guessed
+// from the words in the content. Multi-word phrases score higher.
+const CATEGORY_KEYWORDS = {
+  Placements:   ['placement','recruit','recruitment','hiring','hired','package','lpa','ctc','offer letter','job offer','intern','internship','campus drive','placed','selected by','recruiter'],
+  Sports:       ['match','tournament','cricket','football','kabaddi','hockey','basketball','volleyball','athletics','athlete','sports meet','trophy','championship','medal','league','final','runner-up','marathon','defeated','wickets'],
+  Research:     ['research','paper','patent','innovation','laboratory',' lab ','scientist','publication','published in','journal','prototype','r&d','findings','experiment','scopus'],
+  Achievements: ['award','winner','rank','ranking','prize','recognition','honour','honoured','gold medal','champion','topper','felicitated','accolade','first prize','wins '],
+  Alumni:       ['alumni','alumnus','alumna','ex-student','former student','batch of','passout','pass-out'],
+  Events:       ['fest','festival','ceremony','celebration','workshop','conference','cultural','concert','competition','hackathon','webinar','guest lecture','inaugural','expo','reunion','symposium'],
+  Academics:    ['exam','examination','semester','syllabus','curriculum','b.tech','m.tech','phd','programme','admission','lecture','timetable','faculty','degree','academic','course','result'],
+  Campus:       ['campus','hostel','infrastructure','library','inaugurat','facility','building','mess','wi-fi','convocation','administration','canteen','transport','foundation stone'],
+};
+// Specific sections are checked before generic ones so ties don't all fall to Campus
+const DETECT_PRIORITY = ['Placements','Sports','Research','Achievements','Alumni','Events','Academics','Campus'];
+
+function detectCategory(text) {
+  const t = (text || '').toLowerCase();
+  let best = 'Campus', bestScore = 0;
+  for (const cat of DETECT_PRIORITY) {
+    let score = 0;
+    for (const w of (CATEGORY_KEYWORDS[cat] || [])) {
+      if (t.includes(w)) score += w.includes(' ') ? 2 : 1;   // phrases weigh more
+    }
+    if (score > bestScore) { bestScore = score; best = cat; }
+  }
+  return best;
+}
+
 // Seed articles.json on first run
 function seedIfEmpty() {
   const existing = loadArticles();
@@ -198,7 +227,7 @@ function parseMessage(text = '') {
   const tagRe    = /#([A-Za-z][A-Za-z0-9_-]*)/g;
   const hashtags = [...text.matchAll(tagRe)].map(m => m[1]);
 
-  let category = 'Campus', breaking = false, featured = false;
+  let category = null, breaking = false, featured = false;   // category set by hashtag if present
   const tags = [];
   for (const h of hashtags) {
     const lc      = h.toLowerCase();
@@ -215,6 +244,8 @@ function parseMessage(text = '') {
   const paras = lines;
   const summary = (paras[0] || title).slice(0, 200);
   const content = paras.length ? paras.map(p => `<p>${p}</p>`).join('') : `<p>${title}</p>`;
+  // No explicit #Section hashtag → auto-detect category from the words
+  if (!category) category = detectCategory(`${title}\n${paras.join('\n')}`);
   return { title, summary, content, category, breaking, featured, tags: tags.length ? tags : [category] };
 }
 
