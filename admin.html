@@ -433,8 +433,9 @@
             <button class="btn btn-primary" onclick="saveBot()">Save Bot Settings</button>
             <button class="btn btn-ghost" onclick="clearBot()">Clear Token</button>
           </div>
-          <div style="display:flex;gap:10px;margin-top:10px">
-            <button class="btn btn-primary" onclick="syncSlack()">⬇ Pull from Slack now</button>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="syncSlack()">⬇ Pull recent</button>
+            <button class="btn btn-primary" onclick="syncSlack(30)">⬇ Pull last 30 days</button>
             <button class="btn btn-ghost" onclick="testSlack()">Test connection</button>
           </div>
           <p id="slack-sync-result" class="hint" style="margin-top:8px"></p>
@@ -1031,11 +1032,11 @@ async function testSlack() {
   } catch { el.textContent = '❌ Error contacting server.'; }
 }
 
-async function syncSlack() {
+async function syncSlack(days) {
   const el = document.getElementById('slack-sync-result');
-  el.textContent = 'Pulling messages from Slack…';
+  el.textContent = days ? `Pulling the last ${days} days from Slack…` : 'Pulling recent messages from Slack…';
   try {
-    const res = await api('/admin/slack/sync','POST',{});
+    const res = await api('/admin/slack/sync','POST', days ? { days } : {});
     const d = await res.json();
     if (d.ok) {
       el.textContent = d.created

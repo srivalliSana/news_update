@@ -358,9 +358,11 @@ app.get('/admin/slack/test', requireAdmin, async (_req, res) => {
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
-// Pull recent channel messages now and turn them into articles
-app.post('/admin/slack/sync', requireAdmin, async (_req, res) => {
-  try { res.json(await syncFromSlack()); }
+// Pull channel messages now and turn them into articles.
+// Optional body { days: 30 } backfills that many days; omitted = recent only.
+app.post('/admin/slack/sync', requireAdmin, async (req, res) => {
+  const days = Number(req.body && req.body.days) || 0;
+  try { res.json(await syncFromSlack({ days })); }
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
@@ -620,34 +622,47 @@ async function handleSlackMessage(event, token) {
 // Needs only xoxb token + channel ID — no Event Subscriptions, no public URL.
 // Runs on a timer and can be triggered from the admin portal.
 // ============================================================
-async function syncFromSlack() {
+// days > 0 → backfill that far back (paginating all pages in the window).
+// days = 0 → recurring sync: just the most recent page.
+async function syncFromSlack({ days = 0 } = {}) {
   const cfg = loadConfig();
   if (!cfg.slackBotToken || !cfg.slackChannel)
     return { ok: false, reason: 'Add a bot token and channel ID first.' };
 
   const channels = cfg.slackChannel.split(',').map(s => s.trim()).filter(Boolean);
+  const oldest   = days > 0 ? ((Date.now() - days * 86400000) / 1000).toFixed(6) : undefined;
+  const paginate = days > 0;            // only walk full history for an explicit backfill
   let created = 0;
 
   for (const channel of channels) {
-    const r = await slackApi('conversations.history', { channel, limit: 100 }, cfg.slackBotToken);
-    if (!r.ok) { console.error(`[SLACK] conversations.history (${channel}):`, r.error); continue; }
+    let cursor;
+    do {
+      const params = { channel, limit: 200 };
+      if (oldest) params.oldest = oldest;
+      if (cursor) params.cursor = cursor;
 
-    const articles = loadArticles();
-    // oldest → newest so the newest message ends up on top after unshift
-    for (const msg of (r.messages || []).slice().reverse()) {
-      if (msg.subtype && msg.subtype !== 'file_share') continue;     // skip joins/pins/system
-      if (msg.bot_id) continue;                                      // skip bot/app posts
-      if (msg.thread_ts && msg.thread_ts !== msg.ts) continue;       // skip thread replies
-      if (!(msg.text || (msg.files && msg.files.length))) continue;  // skip empty
-      if (articles.some(a => a.slackTs === msg.ts)) continue;        // already ingested
+      const r = await slackApi('conversations.history', params, cfg.slackBotToken);
+      if (!r.ok) { console.error(`[SLACK] conversations.history (${channel}):`, r.error); break; }
 
-      const article = await buildArticle(msg, cfg.slackBotToken, articles);
-      if (article.featured) articles.forEach(a => { a.featured = false; });
-      articles.unshift(article);
-      created++;
-      console.log(`[SLACK] Pulled #${article.id} "${article.title}" [${article.category}]`);
-    }
-    saveArticles(articles);
+      const articles = loadArticles();
+      // oldest → newest within the page so the newest ends up on top after unshift
+      for (const msg of (r.messages || []).slice().reverse()) {
+        if (msg.subtype && msg.subtype !== 'file_share') continue;     // skip joins/pins/system
+        if (msg.bot_id) continue;                                      // skip bot/app posts
+        if (msg.thread_ts && msg.thread_ts !== msg.ts) continue;       // skip thread replies
+        if (!(msg.text || (msg.files && msg.files.length))) continue;  // skip empty
+        if (articles.some(a => a.slackTs === msg.ts)) continue;        // already ingested
+
+        const article = await buildArticle(msg, cfg.slackBotToken, articles);
+        if (article.featured) articles.forEach(a => { a.featured = false; });
+        articles.unshift(article);
+        created++;
+        console.log(`[SLACK] Pulled #${article.id} "${article.title}" [${article.category}]`);
+      }
+      saveArticles(articles);
+
+      cursor = paginate && r.response_metadata ? r.response_metadata.next_cursor : undefined;
+    } while (cursor);
   }
   return { ok: true, created };
 }
