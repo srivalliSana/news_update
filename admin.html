@@ -104,13 +104,17 @@
     .card-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px}
 
     /* Stats */
-    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+    .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
     .stat{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;
       border-top:3px solid var(--border);text-align:center}
     .stat.s-total{border-top-color:var(--navy)}
     .stat.s-live{border-top-color:var(--green)}
     .stat.s-arc{border-top-color:var(--gold)}
     .stat.s-feat{border-top-color:var(--purple)}
+    .stat.s-pend{border-top-color:#d4172a}
+    .stat.s-pend .stat-n{color:#d4172a}
+    tr.row-pending{background:#fff7f7}
+    tr.row-pending td{border-top:1px solid #f3d3d3}
     .stat-n{font-size:30px;font-weight:900;color:var(--navy);line-height:1}
     .stat-l{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
 
@@ -307,6 +311,7 @@
 
         <div class="stats-row">
           <div class="stat s-total"><div class="stat-n" id="st-total">—</div><div class="stat-l">Total</div></div>
+          <div class="stat s-pend" style="cursor:pointer" onclick="document.getElementById('status-filter').value='pending';filterArticles(document.querySelector('.tb-search').value)"><div class="stat-n" id="st-pend">—</div><div class="stat-l">Pending</div></div>
           <div class="stat s-live"><div class="stat-n" id="st-live">—</div><div class="stat-l">Live</div></div>
           <div class="stat s-arc"><div class="stat-n" id="st-arc">—</div><div class="stat-l">Archived</div></div>
           <div class="stat s-feat"><div class="stat-n" id="st-feat">—</div><div class="stat-l">Featured</div></div>
@@ -322,6 +327,7 @@
           </select>
           <select class="tb-select" onchange="filterArticles(document.querySelector('.tb-search').value)" id="status-filter">
             <option value="">All Status</option>
+            <option value="pending">⏳ Pending approval</option>
             <option value="live">Live only</option>
             <option value="archived">Archived only</option>
           </select>
@@ -695,11 +701,12 @@ async function loadArticles() {
     const data = await res.json();
     allArticles = data.articles || [];
     document.getElementById('st-total').textContent = data.stats.total;
+    document.getElementById('st-pend').textContent  = data.stats.pending || 0;
     document.getElementById('st-live').textContent  = data.stats.live;
     document.getElementById('st-arc').textContent   = data.stats.archived;
     document.getElementById('st-feat').textContent  = data.stats.featured;
     document.getElementById('art-count').textContent = `(${data.stats.total} total)`;
-    renderTable(allArticles);
+    filterArticles(document.querySelector('.tb-search').value);
   } catch { toast('Could not load articles.','err'); }
 }
 
@@ -710,7 +717,10 @@ function filterArticles(q) {
   let arr = allArticles.filter(a =>
     (!lower || a.title.toLowerCase().includes(lower) || a.author.toLowerCase().includes(lower) || a.category.toLowerCase().includes(lower)) &&
     (!sec    || a.category === sec) &&
-    (!status || (status==='live' ? !a.archived : a.archived))
+    (!status ||
+      (status==='pending'  ? a.pending :
+       status==='live'     ? (!a.archived && !a.pending) :
+       /* archived */         a.archived))
   );
   renderTable(arr);
 }
@@ -722,7 +732,7 @@ function renderTable(articles) {
     return;
   }
   tbody.innerHTML = articles.map(a => `
-    <tr>
+    <tr class="${a.pending ? 'row-pending' : ''}">
       <td class="td-id">#${a.id}</td>
       <td class="td-title"><strong>${esc(a.title)}</strong><small>${esc(a.author)}</small></td>
       <td><span class="badge b-section">${esc(a.category)}</span></td>
@@ -731,13 +741,22 @@ function renderTable(articles) {
         ${a.featured ? '<span class="badge b-feat" style="margin-right:3px">⭐ Featured</span>' : ''}
         ${a.breaking ? '<span class="badge b-notice">📢 Notice</span>' : ''}
       </td>
-      <td><span class="badge ${a.archived?'b-arc':'b-live'}">${a.archived?'Archived':'Live'}</span></td>
+      <td>${a.pending
+            ? '<span class="badge" style="background:#d4172a;color:#fff">⏳ Pending</span>'
+            : `<span class="badge ${a.archived?'b-arc':'b-live'}">${a.archived?'Archived':'Live'}</span>`}</td>
       <td>
         <div class="td-actions">
-          <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openArticleModal(${a.id})">✏️</button>
-          <button class="btn btn-ghost btn-sm btn-icon" title="${a.featured?'Unfeature':'Set Featured'}" onclick="quickPatch(${a.id},{featured:${!a.featured}})">${a.featured?'⭐':'☆'}</button>
-          <button class="btn ${a.archived?'btn-green':'btn-ghost'} btn-sm" onclick="quickPatch(${a.id},{archived:${!a.archived}})">${a.archived?'Restore':'Archive'}</button>
-          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${a.id},'${esc(a.title)}')">Delete</button>
+          ${a.pending ? `
+            <button class="btn btn-green btn-sm" onclick="quickPatch(${a.id},{pending:false})">✓ Approve</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openArticleModal(${a.id})">✏️</button>
+            ${a.slackUser ? `<button class="btn btn-ghost btn-sm" title="Block this author" onclick="blockAuthor('${esc(a.slackUser)}','${esc(a.author)}')">🚫 Block</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="confirmDelete(${a.id},'${esc(a.title)}')">Reject</button>
+          ` : `
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openArticleModal(${a.id})">✏️</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="${a.featured?'Unfeature':'Set Featured'}" onclick="quickPatch(${a.id},{featured:${!a.featured}})">${a.featured?'⭐':'☆'}</button>
+            <button class="btn ${a.archived?'btn-green':'btn-ghost'} btn-sm" onclick="quickPatch(${a.id},{archived:${!a.archived}})">${a.archived?'Restore':'Archive'}</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDelete(${a.id},'${esc(a.title)}')">Delete</button>
+          `}
         </div>
       </td>
     </tr>`).join('');
@@ -747,8 +766,18 @@ async function quickPatch(id, body) {
   try {
     const res = await api(`/admin/articles/${id}`,'PATCH',body);
     if (!res.ok) { toast('Failed.','err'); return; }
-    toast('Updated.','ok');
+    toast(body.pending === false ? 'Approved — now live.' : 'Updated.','ok');
     await loadArticles();
+  } catch { toast('Error.','err'); }
+}
+
+async function blockAuthor(userId, name) {
+  if (!confirm(`Block ${name || 'this author'}? Their future posts won't be imported.\n(Reject any of their pending posts separately to remove them.)`)) return;
+  try {
+    const res = await api('/admin/slack/block','POST',{ userId });
+    if (!res.ok) { toast('Block failed.','err'); return; }
+    toast(`Blocked. Add to ignore list: ${userId}`,'ok');
+    loadSlackStatus();
   } catch { toast('Error.','err'); }
 }
 

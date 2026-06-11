@@ -239,8 +239,10 @@ async function buildArticle(msg, token, existing) {
     featured:  parsed.featured,
     breaking:  parsed.breaking,
     archived:  false,
+    pending:   true,            // Slack posts wait for admin approval before going public
     tags:      parsed.tags,
     postedBy:  author,
+    slackUser: msg.user || '',  // for the "block this author" action in the admin UI
     slackTs:   msg.ts
   };
 }
@@ -353,7 +355,7 @@ function parseMessage(text = '') {
 // ============================================================
 // Public API
 // ============================================================
-app.get('/api/articles',   (_req, res) => res.json(loadArticles()));
+app.get('/api/articles',   (_req, res) => res.json(loadArticles().filter(a => !a.pending)));
 app.get('/api/ticker',     (_req, res) => res.json(loadSettings().ticker     || []));
 app.get('/api/quicklinks', (_req, res) => res.json(loadSettings().quickLinks || []));
 
@@ -438,7 +440,8 @@ app.get('/admin/articles', requireAdmin, (_req, res) => {
     articles,
     stats: {
       total:    articles.length,
-      live:     articles.filter(a => !a.archived).length,
+      pending:  articles.filter(a =>  a.pending).length,
+      live:     articles.filter(a => !a.archived && !a.pending).length,
       archived: articles.filter(a =>  a.archived).length,
       featured: articles.filter(a =>  a.featured).length,
     }
@@ -509,14 +512,27 @@ app.patch('/admin/articles/:id', requireAdmin, (req, res) => {
   const article  = articles.find(a => a.id === id);
   if (!article) return res.status(404).json({ error: `Article #${id} not found.` });
 
-  const { archived, featured, breaking } = req.body;
+  const { archived, featured, breaking, pending } = req.body;
   if (featured) articles.forEach(a => { a.featured = false; }); // un-feature others
   if (typeof archived  === 'boolean') article.archived  = archived;
   if (typeof featured  === 'boolean') article.featured  = featured;
   if (typeof breaking  === 'boolean') article.breaking  = breaking;
+  if (typeof pending   === 'boolean') article.pending   = pending;   // false = approve → goes public
 
   saveArticles(articles);
   res.json(article);
+});
+
+// Add a Slack member ID (or name) to the ignore list — used by "Block author" in the UI
+app.post('/admin/slack/block', requireAdmin, (req, res) => {
+  const id = (req.body && req.body.userId || '').trim();
+  if (!id) return res.status(400).json({ error: 'userId required.' });
+  const cfg  = loadConfig();
+  const list = (cfg.slackIgnoreUsers || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!list.some(x => x.toLowerCase() === id.toLowerCase())) list.push(id);
+  cfg.slackIgnoreUsers = list.join(',');
+  saveConfig(cfg);
+  res.json({ ok: true, slackIgnoreUsers: cfg.slackIgnoreUsers });
 });
 
 app.delete('/admin/articles/:id', requireAdmin, (req, res) => {
