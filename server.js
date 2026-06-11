@@ -248,6 +248,39 @@ function cleanSlackText(s = '') {
     .trim();
 }
 
+// Build a safe anchor — only http(s)/mailto links are allowed
+function safeAnchor(href, label) {
+  const url = href.replace(/&amp;/g, '&');                 // Slack escapes & in URLs
+  if (!/^(https?:|mailto:)/i.test(url)) return label;
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+}
+
+// Slack message text → HTML for the article body, with clickable links
+function toHtml(s = '') {
+  let out = (s || '')
+    .replace(/<(https?:\/\/[^>|\s]+)\|([^>]+)>/g, (_m, url, label) => safeAnchor(url, label)) // <url|label>
+    .replace(/<(https?:\/\/[^>\s]+)>/g, (_m, url) => safeAnchor(url, url))                     // <url>
+    .replace(/<mailto:([^>|]+)(?:\|([^>]+))?>/g, (_m, mail, label) => safeAnchor('mailto:' + mail, label || mail))
+    .replace(/<@[^>]+>/g, '')                          // strip @user mentions
+    .replace(/<![^>]+>/g, '')                          // strip @here / @channel
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')  // *bold*
+    .replace(/~([^~\n]+)~/g, '$1')                      // ~strike~
+    .replace(/`([^`\n]+)`/g, '$1')                      // `code`
+    .replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<em>$2</em>'); // _italic_
+  // Auto-link any bare URLs Slack didn't wrap in <>
+  out = out.replace(/(^|[^"'>])((?:https?:\/\/|www\.)[^\s<]+)/g, (_m, pre, url) => {
+    const href = url.startsWith('http') ? url : 'http://' + url;
+    return pre + safeAnchor(href, url);
+  });
+  return out;
+}
+
+// Skip messages that are meeting minutes (MoM) — they shouldn't become news
+function isMinutesOfMeeting(text = '') {
+  if (/minutes of (the )?meeting|meeting minutes/i.test(text)) return true;
+  return /\bMoM\b/.test(text);   // case-sensitive so it won't match the word "mom"
+}
+
 // Trim to a length without cutting a word in half; add an ellipsis if shortened
 function smartTrim(s = '', n) {
   if (s.length <= n) return s;
@@ -280,26 +313,29 @@ function parseMessage(text = '') {
     tags.push(h);
   }
 
-  const body  = cleanSlackText(text.replace(tagRe, ''));
-  let lines   = body.split('\n').map(l => l.trim()).filter(Boolean);
+  // Keep raw lines (for HTML/links in the body) and a plain view (for title/summary)
+  const raw   = text.replace(tagRe, '');
+  let rawLines = raw.split('\n').map(l => l.trim()).filter(l => cleanSlackText(l).length > 0);
   // Drop leading greeting lines so they don't become the headline
-  while (lines.length > 1 && isGreeting(lines[0])) lines.shift();
+  while (rawLines.length > 1 && isGreeting(cleanSlackText(rawLines[0]))) rawLines.shift();
 
-  const opener = lines[0] || 'Campus Update';
-  let title, paras;
-  if (opener.length > 90) {
+  const openerPlain = cleanSlackText(rawLines[0] || 'Campus Update');
+  let title, bodyRaw;
+  if (openerPlain.length > 90) {
     // Chatty opener with no short headline → headline = its first sentence,
     // and keep the full text in the body so nothing is lost.
-    title = smartTrim(opener.split(/(?<=[.!?])\s/)[0], 140);
-    paras = lines;
+    title   = smartTrim(openerPlain.split(/(?<=[.!?])\s/)[0], 140);
+    bodyRaw = rawLines;
   } else {
-    title = smartTrim(opener, 140);
-    paras = lines.slice(1);
+    title   = smartTrim(openerPlain, 140);
+    bodyRaw = rawLines.slice(1);
   }
-  const summary = smartTrim(paras[0] || title, 200);
-  const content = paras.length ? paras.map(p => `<p>${p}</p>`).join('') : `<p>${title}</p>`;
+  const summary = smartTrim(cleanSlackText(bodyRaw[0] || '') || title, 200);
+  const content = bodyRaw.length
+    ? bodyRaw.map(l => `<p>${toHtml(l)}</p>`).join('')      // body keeps clickable links
+    : `<p>${toHtml(rawLines[0] || title)}</p>`;
   // No explicit #Section hashtag → auto-detect category from the words
-  if (!category) category = detectCategory(`${title}\n${paras.join('\n')}`);
+  if (!category) category = detectCategory(`${title}\n${bodyRaw.map(cleanSlackText).join('\n')}`);
   return { title, summary, content, category, breaking, featured, tags: tags.length ? tags : [category] };
 }
 
@@ -606,6 +642,7 @@ async function handleSlackMessage(event, token) {
   if (subtype && subtype !== 'file_share') return;          // ignore joins, pins, etc.
   if (event.bot_id) return;                                  // ignore bot/app posts
   if (event.thread_ts && event.thread_ts !== event.ts) return; // ignore thread replies
+  if (isMinutesOfMeeting(event.text || '')) return;          // ignore meeting minutes
 
   const articles = loadArticles();
   if (articles.some(a => a.slackTs === event.ts)) return;    // already ingested
@@ -651,6 +688,7 @@ async function syncFromSlack({ days = 0 } = {}) {
         if (msg.bot_id) continue;                                      // skip bot/app posts
         if (msg.thread_ts && msg.thread_ts !== msg.ts) continue;       // skip thread replies
         if (!(msg.text || (msg.files && msg.files.length))) continue;  // skip empty
+        if (isMinutesOfMeeting(msg.text || '')) continue;              // skip meeting minutes
         if (articles.some(a => a.slackTs === msg.ts)) continue;        // already ingested
 
         const article = await buildArticle(msg, cfg.slackBotToken, articles);

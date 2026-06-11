@@ -965,3 +965,12 @@ body.dark .feed-header h2 { color: var(--text); }
   .hero-side { flex-direction: column; }
   .section-grid { grid-template-columns: 1fr; }
 }
+
+/* Clickable links inside article body (Slack-imported posts) */
+.modal-content-body a {
+  color: var(--news-red);
+  text-decoration: underline;
+  font-weight: 600;
+  word-break: break-word;
+}
+.modal-content-body a:hover { text-decoration: none; }
