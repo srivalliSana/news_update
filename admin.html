@@ -429,6 +429,11 @@
             <input type="text" id="slack-channel" placeholder="e.g. C0123456789 — blank = any channel the bot is in" />
             <p class="hint">Only messages from this channel become articles. Copy the ID from the bottom of the channel's “View channel details”. Comma-separate for multiple.</p>
           </div>
+          <div class="form-row">
+            <label>Ignore posts from <span style="color:var(--muted)">(optional)</span></label>
+            <input type="text" id="slack-ignore" placeholder="e.g. U0123ABCD, DN Rao — member IDs or names, comma-separated" />
+            <p class="hint">Posts from these people are skipped. Member ID (Slack profile → ⋮ → Copy member ID) is most reliable; a name only works if the bot has the <code>users:read</code> scope.</p>
+          </div>
           <div style="display:flex;gap:10px">
             <button class="btn btn-primary" onclick="saveBot()">Save Bot Settings</button>
             <button class="btn btn-ghost" onclick="clearBot()">Clear Token</button>
@@ -996,13 +1001,16 @@ async function loadSlackStatus() {
     }
     const ch = document.getElementById('slack-channel');
     if (ch && data.slackChannel) ch.value = data.slackChannel;
+    const ig = document.getElementById('slack-ignore');
+    if (ig && data.slackIgnoreUsers) ig.value = data.slackIgnoreUsers;
   } catch {}
 }
 
 async function saveBot() {
   const token   = document.getElementById('bot-token').value.trim();
   const channel = document.getElementById('slack-channel').value.trim();
-  const payload = { slackChannel: channel };
+  const ignore  = document.getElementById('slack-ignore').value.trim();
+  const payload = { slackChannel: channel, slackIgnoreUsers: ignore };
   if (token) payload.slackBotToken = token;
   try {
     const res = await api('/admin/config','POST',payload);

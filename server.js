@@ -61,7 +61,7 @@ function loadArticles() {
 function saveArticles(a) { fs.writeFileSync(ARTICLES_FILE, JSON.stringify(a, null, 2)); }
 
 function loadConfig() {
-  const cfg = { slackSigningSecret:'', slackBotToken:'', slackChannel:'', adminPassword:'cutm@admin' };
+  const cfg = { slackSigningSecret:'', slackBotToken:'', slackChannel:'', slackIgnoreUsers:'', adminPassword:'cutm@admin' };
   try {
     const raw = fs.readFileSync(CONFIG_FILE, 'utf8').trim();
     if (raw) Object.assign(cfg, JSON.parse(raw));
@@ -70,6 +70,7 @@ function loadConfig() {
   if (!cfg.slackSigningSecret && process.env.SLACK_SIGNING_SECRET) cfg.slackSigningSecret = process.env.SLACK_SIGNING_SECRET.trim();
   if (!cfg.slackBotToken      && process.env.SLACK_BOT_TOKEN)      cfg.slackBotToken      = process.env.SLACK_BOT_TOKEN.trim();
   if (!cfg.slackChannel       && process.env.SLACK_CHANNEL)        cfg.slackChannel       = process.env.SLACK_CHANNEL.trim();
+  if (!cfg.slackIgnoreUsers   && process.env.SLACK_IGNORE_USERS)   cfg.slackIgnoreUsers   = process.env.SLACK_IGNORE_USERS.trim();
   return cfg;
 }
 function saveConfig(c) { fs.writeFileSync(CONFIG_FILE, JSON.stringify(c, null, 2)); }
@@ -207,6 +208,16 @@ async function firstImageUrl(files, token) {
   if (!Array.isArray(files) || !token) return null;
   const img = files.find(f => (f.mimetype || '').startsWith('image/'));
   return img ? downloadSlackImage(img, token) : null;
+}
+
+// Should this author's posts be skipped? `ignoreList` entries can be Slack
+// member IDs (e.g. U0123ABCD — exact, always works) or name fragments
+// (e.g. "DN Rao" — needs users:read to resolve the name).
+async function isIgnoredAuthor(userId, token, ignoreList) {
+  if (!ignoreList.length) return false;
+  if (userId && ignoreList.some(x => x.toUpperCase() === userId.toUpperCase())) return true;
+  const name = (await resolveUserName(userId, token) || '').toLowerCase();
+  return !!name && ignoreList.some(x => { const lx = x.toLowerCase(); return name === lx || name.includes(lx); });
 }
 
 // Build an article object from a Slack message (used by both the events push
@@ -369,18 +380,20 @@ app.post('/admin/logout', requireAdmin, (req, res) => {
 app.get('/admin/config', requireAdmin, (_req, res) => {
   const cfg = loadConfig();
   res.json({
-    slackConfigured: !!cfg.slackSigningSecret,
-    botConfigured:   !!cfg.slackBotToken,
-    slackChannel:    cfg.slackChannel || ''
+    slackConfigured:  !!cfg.slackSigningSecret,
+    botConfigured:    !!cfg.slackBotToken,
+    slackChannel:     cfg.slackChannel || '',
+    slackIgnoreUsers: cfg.slackIgnoreUsers || ''
   });
 });
 
 app.post('/admin/config', requireAdmin, (req, res) => {
   const cfg = loadConfig();
-  const { slackSigningSecret, slackBotToken, slackChannel, adminPassword } = req.body;
+  const { slackSigningSecret, slackBotToken, slackChannel, slackIgnoreUsers, adminPassword } = req.body;
   if (typeof slackSigningSecret === 'string') cfg.slackSigningSecret = slackSigningSecret.trim();
   if (typeof slackBotToken      === 'string') cfg.slackBotToken      = slackBotToken.trim();
   if (typeof slackChannel       === 'string') cfg.slackChannel       = slackChannel.trim();
+  if (typeof slackIgnoreUsers   === 'string') cfg.slackIgnoreUsers   = slackIgnoreUsers.trim();
   if (typeof adminPassword      === 'string' && adminPassword.length >= 6) cfg.adminPassword = adminPassword;
   saveConfig(cfg);
   res.json({ ok: true, slackConfigured: !!cfg.slackSigningSecret, botConfigured: !!cfg.slackBotToken });
@@ -643,6 +656,10 @@ async function handleSlackMessage(event, token) {
   if (event.bot_id) return;                                  // ignore bot/app posts
   if (event.thread_ts && event.thread_ts !== event.ts) return; // ignore thread replies
   if (isMinutesOfMeeting(event.text || '')) return;          // ignore meeting minutes
+  {
+    const ignore = (loadConfig().slackIgnoreUsers || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (await isIgnoredAuthor(event.user, token, ignore)) return;  // ignore blocked authors
+  }
 
   const articles = loadArticles();
   if (articles.some(a => a.slackTs === event.ts)) return;    // already ingested
@@ -667,6 +684,7 @@ async function syncFromSlack({ days = 0 } = {}) {
     return { ok: false, reason: 'Add a bot token and channel ID first.' };
 
   const channels = cfg.slackChannel.split(',').map(s => s.trim()).filter(Boolean);
+  const ignore   = (cfg.slackIgnoreUsers || '').split(',').map(s => s.trim()).filter(Boolean);
   const oldest   = days > 0 ? ((Date.now() - days * 86400000) / 1000).toFixed(6) : undefined;
   const paginate = days > 0;            // only walk full history for an explicit backfill
   let created = 0;
@@ -690,12 +708,13 @@ async function syncFromSlack({ days = 0 } = {}) {
         if (!(msg.text || (msg.files && msg.files.length))) continue;  // skip empty
         if (isMinutesOfMeeting(msg.text || '')) continue;              // skip meeting minutes
         if (articles.some(a => a.slackTs === msg.ts)) continue;        // already ingested
+        if (await isIgnoredAuthor(msg.user, cfg.slackBotToken, ignore)) continue; // skip blocked authors
 
         const article = await buildArticle(msg, cfg.slackBotToken, articles);
         if (article.featured) articles.forEach(a => { a.featured = false; });
         articles.unshift(article);
         created++;
-        console.log(`[SLACK] Pulled #${article.id} "${article.title}" [${article.category}]`);
+        console.log(`[SLACK] Pulled #${article.id} "${article.title}" [${article.category}] by ${msg.user}`);
       }
       saveArticles(articles);
 
